@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Replaced placeholder Watchlist Channel URL rows with live YouTube lookups.
+- Files or subsystems touched: `vite.config.js`, `src/App.jsx`, and this implementation log.
+- Behavior/runtime effect: The Vite dev server now exposes `/api/channel-urls`, resolves a YouTube channel URL to real RSS/video data, and Watchlist Channel loads real URL rows instead of generated dummy rows before queuing selected rows into Downloads.
+- Validation status: `timeout 120s npm run build` completed successfully; restarted Vite dev server on port `4177`; local `/api/channel-urls` lookup for `https://www.youtube.com/@Sleepybloke&type=videos` returned real YouTube video rows; public page check returned `200 OK`.
+- Open follow-up items: Move the YouTube lookup middleware into a production backend service and add stronger parsing for Shorts/Live metadata.
+
+## 2026-05-17
+
 - Scope: Changed Channel URLs from a single channel link into a video URL list.
 - Files or subsystems touched: `src/App.jsx`, `src/styles.css`, and this implementation log.
 - Behavior/runtime effect: Selecting a channel and URL type now displays multiple video URL rows for Videos and Shorts, one Live row for Live, and each row has its own Add to Download action that queues that specific URL.

@@ -125,28 +125,6 @@ function normalizeChannelRows(rows) {
   });
 }
 
-function slugify(value) {
-  return String(value || 'channel').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 10) || 'channel';
-}
-
-function buildChannelVideoRows(feed, typeID) {
-  const type = channelURLTypes.find((item) => item.id === typeID) || channelURLTypes[0];
-  const slug = slugify(feed?.name);
-  const prefix = type.id === 'shorts' ? 'shorts' : 'watch';
-  const rows = type.id === 'live' ? [1] : [1, 2, 3];
-
-  return rows.map((index) => {
-    const videoID = `${slug}${type.id}${index}`;
-    const url = prefix === 'shorts' ? `https://www.youtube.com/shorts/${videoID}` : `https://www.youtube.com/watch?v=${videoID}`;
-    return {
-      id: `${feed?.id || 'channel'}-${type.id}-${index}`,
-      title: `${feed?.name || 'Channel'} ${type.label} ${index}`,
-      url,
-      type
-    };
-  });
-}
-
 function PixelMark() {
   return (
     <div className="pixel-mark" aria-hidden="true">
@@ -536,15 +514,42 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
   const watchedFeeds = feeds.filter((feed) => feed.status === 'Watching');
   const [selectedFeedID, setSelectedFeedID] = useState(watchedFeeds[0]?.id || '');
   const [selectedURLType, setSelectedURLType] = useState('videos');
+  const [videoRows, setVideoRows] = useState([]);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoError, setVideoError] = useState('');
   const selectedFeed = watchedFeeds.find((feed) => String(feed.id) === String(selectedFeedID)) || watchedFeeds[0] || null;
   const selectedType = channelURLTypes.find((type) => type.id === selectedURLType) || channelURLTypes[0];
-  const selectedVideoRows = selectedFeed ? buildChannelVideoRows(selectedFeed, selectedType.id) : [];
 
   useEffect(() => {
     if (!selectedFeed && watchedFeeds[0]) {
       setSelectedFeedID(watchedFeeds[0].id);
     }
   }, [selectedFeed, watchedFeeds]);
+
+  useEffect(() => {
+    if (!selectedFeed) {
+      setVideoRows([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setVideoLoading(true);
+    setVideoError('');
+    fetch(`/api/channel-urls?url=${encodeURIComponent(selectedFeed.url)}&type=${encodeURIComponent(selectedType.id)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || 'Failed to load channel URLs.');
+        setVideoRows(Array.isArray(payload.rows) ? payload.rows : []);
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') return;
+        setVideoRows([]);
+        setVideoError(String(error?.message || error));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setVideoLoading(false);
+      });
+    return () => controller.abort();
+  }, [selectedFeed, selectedType]);
 
   return (
     <div className="view-stack">
@@ -575,7 +580,7 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
         <section className="panel">
           <div className="panel-head">
             <h2>Channel URLs</h2>
-            <span className="panel-note">{selectedVideoRows.length} URLs</span>
+            <span className="panel-note">{videoLoading ? 'Loading...' : `${videoRows.length} URLs`}</span>
           </div>
           <div className="radio-grid compact-radio-grid">
             {channelURLTypes.map((type) => (
@@ -601,15 +606,25 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
                 </tr>
               </thead>
               <tbody>
-                {selectedVideoRows.map((row) => (
+                {videoError ? (
+                  <tr>
+                    <td colSpan="6" className="error-line">{videoError}</td>
+                  </tr>
+                ) : null}
+                {!videoError && !videoLoading && videoRows.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="mono-cell">No URLs found for this channel/type.</td>
+                  </tr>
+                ) : null}
+                {videoRows.map((row) => (
                   <tr key={row.id}>
                     <td>{selectedFeed.name}</td>
-                    <td>{row.type.label}</td>
+                    <td>{selectedType.label}</td>
                     <td>{row.title}</td>
                     <td className="mono-cell">{row.url}</td>
                     <td>{selectedFeed.rule}</td>
                     <td>
-                      <button type="button" onClick={() => onAddToDownload(selectedFeed, row.url, row.type, row.title)}>
+                      <button type="button" onClick={() => onAddToDownload(selectedFeed, row.url, selectedType, row.title)}>
                         Add to Download
                       </button>
                     </td>
