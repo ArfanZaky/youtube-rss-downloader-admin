@@ -11,7 +11,7 @@ Current scope:
 - User, role, and permission management views.
 - RSS feed table with local create, edit, and delete actions.
 - Channel list table with separate local create, edit, and delete actions.
-- Download queue with local create, edit, and delete actions.
+- Download queue with local create, edit, delete, automatic progress, and save paths from Settings.
 - Editable downloader settings panels.
 
 Demo login:

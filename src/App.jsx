@@ -40,9 +40,9 @@ const initialChannels = [
 ];
 
 const initialDownloads = [
-  { id: 'Q-1042', title: 'Building a clean RSS worker', source: 'Tech Reviews', quality: '1080p', status: 'Downloading', progress: 64 },
-  { id: 'Q-1041', title: 'Weekly creator news', source: 'Podcast Clips', quality: 'mp3', status: 'Queued', progress: 0 },
-  { id: 'Q-1040', title: 'React admin menus from scratch', source: 'Tutorial Archive', quality: '720p', status: 'Done', progress: 100 }
+  { id: 'Q-1042', title: 'Building a clean RSS worker', source: 'Tech Reviews', quality: '1080p', status: 'Downloading', progress: 64, path: '/srv/media/youtube/building-a-clean-rss-worker.mp4' },
+  { id: 'Q-1041', title: 'Weekly creator news', source: 'Podcast Clips', quality: 'mp3', status: 'Queued', progress: 0, path: '/srv/media/youtube/weekly-creator-news.mp3' },
+  { id: 'Q-1040', title: 'React admin menus from scratch', source: 'Tutorial Archive', quality: '720p', status: 'Done', progress: 100, path: '/srv/media/youtube/react-admin-menus-from-scratch.mp4' }
 ];
 
 const channelURLTypes = [
@@ -130,6 +130,16 @@ function hasStoredValue(key) {
 
 function isRSSFeedURL(row) {
   return String(row?.url || '').includes('/feeds/videos.xml');
+}
+
+function safeFilename(value) {
+  return String(value || 'download').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90) || 'download';
+}
+
+function buildDownloadPath(settings, item) {
+  const basePath = String(settings?.downloadPath || defaultSettings.downloadPath).replace(/\/+$/, '');
+  const extension = String(item?.quality || '').toLowerCase().includes('mp3') ? 'mp3' : 'mp4';
+  return `${basePath}/${safeFilename(item?.title)}.${extension}`;
 }
 
 function normalizeChannelRows(rows) {
@@ -239,6 +249,7 @@ function QueueTable({ downloads, onEdit, onDelete }) {
             <th>Quality</th>
             <th>Status</th>
             <th>Progress</th>
+            <th>Path</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -253,6 +264,7 @@ function QueueTable({ downloads, onEdit, onDelete }) {
               <td>
                 <ProgressBar value={item.progress} />
               </td>
+              <td className="mono-cell">{item.path || '-'}</td>
               <td>
                 <div className="table-actions">
                   <button type="button" onClick={() => onEdit(item)}>
@@ -316,9 +328,7 @@ function DownloadForm({ initialDownload, onSave, onCancel }) {
     initialDownload || {
       title: '',
       source: '',
-      quality: '1080p',
-      status: 'Queued',
-      progress: 0
+      quality: '1080p'
     }
   );
   const [error, setError] = useState('');
@@ -340,9 +350,7 @@ function DownloadForm({ initialDownload, onSave, onCancel }) {
       id: initialDownload?.id || `Q-${Date.now()}`,
       title,
       source,
-      quality: draft.quality,
-      status: draft.status,
-      progress: Math.max(0, Math.min(100, Number(draft.progress) || 0))
+      quality: draft.quality
     });
   };
 
@@ -375,19 +383,6 @@ function DownloadForm({ initialDownload, onSave, onCancel }) {
             <option>480p</option>
             <option>mp3</option>
           </select>
-        </label>
-        <label>
-          Status
-          <select value={draft.status} onChange={(event) => update('status', event.target.value)}>
-            <option>Queued</option>
-            <option>Downloading</option>
-            <option>Done</option>
-            <option>Failed</option>
-          </select>
-        </label>
-        <label>
-          Progress
-          <input type="number" min="0" max="100" value={draft.progress} onChange={(event) => update('progress', event.target.value)} />
         </label>
       </div>
     </form>
@@ -964,6 +959,29 @@ export default function App() {
     saveJSON(downloadsKey, nextDownloads);
   };
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setDownloads((current) => {
+        const activeIndex = current.findIndex((item) => item.status === 'Downloading');
+        const queuedIndex = current.findIndex((item) => item.status === 'Queued');
+        const targetIndex = activeIndex >= 0 ? activeIndex : queuedIndex;
+        if (targetIndex < 0) return current;
+
+        const nextDownloads = current.map((item, index) => {
+          if (index !== targetIndex) return item;
+          if (item.status === 'Queued') {
+            return { ...item, status: 'Downloading', progress: Math.max(5, Number(item.progress) || 0) };
+          }
+          const nextProgress = Math.min(100, Number(item.progress || 0) + 15);
+          return { ...item, status: nextProgress >= 100 ? 'Done' : 'Downloading', progress: nextProgress };
+        });
+        saveJSON(downloadsKey, nextDownloads);
+        return nextDownloads;
+      });
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const openAddDownload = () => {
     setActive('downloads');
     setEditingDownload(null);
@@ -977,8 +995,15 @@ export default function App() {
   };
 
   const saveDownload = (download) => {
-    const exists = downloads.some((item) => item.id === download.id);
-    const nextDownloads = exists ? downloads.map((item) => (item.id === download.id ? download : item)) : [download, ...downloads];
+    const existing = downloads.find((item) => item.id === download.id);
+    const nextDownload = {
+      ...existing,
+      ...download,
+      status: existing?.status || 'Queued',
+      progress: existing?.progress ?? 0
+    };
+    nextDownload.path = buildDownloadPath(settings, nextDownload);
+    const nextDownloads = existing ? downloads.map((item) => (item.id === download.id ? nextDownload : item)) : [nextDownload, ...downloads];
     saveDownloads(nextDownloads);
     setEditingDownload(null);
     setShowDownloadForm(false);
@@ -994,9 +1019,7 @@ export default function App() {
       id: `Q-${Date.now()}`,
       title: title || `${feed.name} - ${type.label}`,
       source: sourceURL,
-      quality,
-      status: 'Queued',
-      progress: 0
+      quality
     });
     setActive('downloads');
   };

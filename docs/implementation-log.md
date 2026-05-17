@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Made Downloads runtime fields automatic.
+- Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
+- Behavior/runtime effect: Download forms no longer expose Status or Progress fields; new and edited downloads derive a destination path from Settings `downloadPath`, and a local worker advances queued downloads through Downloading to Done automatically while persisting progress.
+- Validation status: `timeout 120s npm run build` completed successfully; public page check returned `200 OK`; local channel URL API still returned real Sleepybloke rows.
+- Open follow-up items: Replace the local progress simulation with a real downloader worker that writes files to the configured path.
+
+## 2026-05-17
+
 - Scope: Split RSS Feed data from Channel List data.
 - Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
 - Behavior/runtime effect: RSS Feeds now stores and edits RSS feed URLs under a dedicated `rss-feeds` localStorage key; Channel List and Watchlist Channel now store and edit channel URLs under a separate `channels` key. Legacy mixed rows are split by URL type during first load.
