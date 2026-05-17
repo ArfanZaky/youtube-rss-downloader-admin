@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Hardened local storage bootstrap to avoid data reset during app changes.
+- Files or subsystems touched: `src/App.jsx` and this implementation log.
+- Behavior/runtime effect: RSS, channel, and download seed data is now written only when no saved dataset exists; legacy mixed RSS/channel rows are migrated once into separate storage keys and persisted so future code changes do not re-run default seed data over saved rows.
+- Validation status: `timeout 120s npm run build` completed successfully; public page check returned `200 OK`; local channel URL API still returned real Sleepybloke rows.
+- Open follow-up items: Replace localStorage with a real backend database for cross-browser and server-side persistence.
+
+## 2026-05-17
+
 - Scope: Made Downloads runtime fields automatic.
 - Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
 - Behavior/runtime effect: Download forms no longer expose Status or Progress fields; new and edited downloads derive a destination path from Settings `downloadPath`, and a local worker advances queued downloads through Downloading to Done automatically while persisting progress.

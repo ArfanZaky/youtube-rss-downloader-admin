@@ -154,13 +154,23 @@ function normalizeChannelRows(rows) {
 function loadRSSFeeds() {
   if (hasStoredValue(rssFeedsKey)) return loadArray(rssFeedsKey, initialRSSFeeds);
   const legacyRSSRows = loadArray(legacyFeedsKey, []).filter(isRSSFeedURL);
-  return legacyRSSRows.length > 0 ? legacyRSSRows : initialRSSFeeds;
+  const rows = legacyRSSRows.length > 0 ? legacyRSSRows : initialRSSFeeds;
+  saveJSON(rssFeedsKey, rows);
+  return rows;
 }
 
 function loadChannels() {
   if (hasStoredValue(channelsKey)) return normalizeChannelRows(loadArray(channelsKey, initialChannels));
   const legacyChannelRows = loadArray(legacyFeedsKey, []).filter((row) => !isRSSFeedURL(row));
-  return legacyChannelRows.length > 0 ? normalizeChannelRows(legacyChannelRows) : initialChannels;
+  const rows = legacyChannelRows.length > 0 ? normalizeChannelRows(legacyChannelRows) : initialChannels;
+  saveJSON(channelsKey, rows);
+  return rows;
+}
+
+function loadDownloads() {
+  if (hasStoredValue(downloadsKey)) return loadArray(downloadsKey, initialDownloads);
+  saveJSON(downloadsKey, initialDownloads);
+  return initialDownloads;
 }
 
 function PixelMark() {
@@ -942,7 +952,7 @@ export default function App() {
   const [active, setActive] = useState('overview');
   const [roles, setRoles] = useState(initialRoles);
   const [settings, setSettings] = useState(() => loadJSON(settingsKey, defaultSettings));
-  const [downloads, setDownloads] = useState(() => loadArray(downloadsKey, initialDownloads));
+  const [downloads, setDownloads] = useState(loadDownloads);
   const [rssFeeds, setRSSFeeds] = useState(loadRSSFeeds);
   const [channels, setChannels] = useState(loadChannels);
   const [showDownloadForm, setShowDownloadForm] = useState(false);
