@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Added frontend CRUD behavior for Downloads and RSS Feeds.
+- Files or subsystems touched: `src/App.jsx`, `src/styles.css`, `README.md`, and this implementation log.
+- Behavior/runtime effect: Downloads and RSS Feeds now support local create, edit, and delete actions from their menu pages and overview tables; both datasets persist in `localStorage` across refreshes.
+- Validation status: `timeout 120s npm run build` completed successfully; local and public HTTP checks on port `4177` returned `200 OK`.
+- Open follow-up items: Replace local CRUD persistence with backend API routes, database persistence, real YouTube queue execution, and RSS polling.
+
+## 2026-05-17
+
 - Scope: Implemented the RSS Add Feed action.
 - Files or subsystems touched: `src/App.jsx`, `src/styles.css`, `README.md`, and this implementation log.
 - Behavior/runtime effect: The Add Feed button now opens a controlled RSS feed form, validates required name and HTTP(S) URL fields, inserts the new feed at the top of the table, updates active feed counts, and persists feed rows in `localStorage` across refreshes.

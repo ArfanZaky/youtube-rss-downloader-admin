@@ -8,8 +8,9 @@ Current scope:
 - Login screen with demo credentials and refresh-safe local session.
 - Parent-child menu with Administrator containing Users, Roles, Permissions, and Settings.
 - User, role, and permission management views.
-- RSS feed subscription table with working Add Feed form.
-- Download queue and editable downloader settings panels.
+- RSS feed subscription table with local create, edit, and delete actions.
+- Download queue with local create, edit, and delete actions.
+- Editable downloader settings panels.
 
 Demo login:
 

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 const sessionKey = 'yt-rss-admin.session.v1';
 const settingsKey = 'yt-rss-admin.settings.v1';
 const feedsKey = 'yt-rss-admin.feeds.v1';
+const downloadsKey = 'yt-rss-admin.downloads.v1';
 
 const permissions = [
   { id: 'dashboard.read', label: 'Dashboard', group: 'Core' },
@@ -31,7 +32,7 @@ const initialFeeds = [
   { id: 3, name: 'Tutorial Archive', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-course', rule: '720p mp4', status: 'Watching', lastCheck: '9 min ago' }
 ];
 
-const queue = [
+const initialDownloads = [
   { id: 'Q-1042', title: 'Building a clean RSS worker', source: 'Tech Reviews', quality: '1080p', status: 'Downloading', progress: 64 },
   { id: 'Q-1041', title: 'Weekly creator news', source: 'Podcast Clips', quality: 'mp3', status: 'Queued', progress: 0 },
   { id: 'Q-1040', title: 'React admin menus from scratch', source: 'Tutorial Archive', quality: '720p', status: 'Done', progress: 100 }
@@ -175,7 +176,7 @@ function ProgressBar({ value }) {
   );
 }
 
-function QueueTable() {
+function QueueTable({ downloads, onEdit, onDelete }) {
   return (
     <div className="table-wrap">
       <table>
@@ -187,10 +188,11 @@ function QueueTable() {
             <th>Quality</th>
             <th>Status</th>
             <th>Progress</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {queue.map((item) => (
+          {downloads.map((item) => (
             <tr key={item.id}>
               <td>{item.id}</td>
               <td>{item.title}</td>
@@ -200,6 +202,16 @@ function QueueTable() {
               <td>
                 <ProgressBar value={item.progress} />
               </td>
+              <td>
+                <div className="table-actions">
+                  <button type="button" onClick={() => onEdit(item)}>
+                    Edit
+                  </button>
+                  <button type="button" onClick={() => onDelete(item.id)}>
+                    Delete
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -208,7 +220,7 @@ function QueueTable() {
   );
 }
 
-function FeedTable({ feeds }) {
+function FeedTable({ feeds, onEdit, onDelete }) {
   return (
     <div className="table-wrap">
       <table>
@@ -219,6 +231,7 @@ function FeedTable({ feeds }) {
             <th>Rule</th>
             <th>Status</th>
             <th>Last Check</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -229,6 +242,16 @@ function FeedTable({ feeds }) {
               <td>{feed.rule}</td>
               <td>{feed.status}</td>
               <td>{feed.lastCheck}</td>
+              <td>
+                <div className="table-actions">
+                  <button type="button" onClick={() => onEdit(feed)}>
+                    Edit
+                  </button>
+                  <button type="button" onClick={() => onDelete(feed.id)}>
+                    Delete
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -237,12 +260,95 @@ function FeedTable({ feeds }) {
   );
 }
 
-function AddFeedForm({ onAdd, onCancel }) {
+function DownloadForm({ initialDownload, onSave, onCancel }) {
+  const [draft, setDraft] = useState(
+    initialDownload || {
+      title: '',
+      source: '',
+      quality: '1080p',
+      status: 'Queued',
+      progress: 0
+    }
+  );
+  const [error, setError] = useState('');
+
+  const update = (key, value) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setError('');
+  };
+
+  const submit = (event) => {
+    event.preventDefault();
+    const title = String(draft.title || '').trim();
+    const source = String(draft.source || '').trim();
+    if (!title || !source) {
+      setError('Title dan Source wajib diisi.');
+      return;
+    }
+    onSave({
+      id: initialDownload?.id || `Q-${Date.now()}`,
+      title,
+      source,
+      quality: draft.quality,
+      status: draft.status,
+      progress: Math.max(0, Math.min(100, Number(draft.progress) || 0))
+    });
+  };
+
+  return (
+    <form className="panel form-panel" onSubmit={submit}>
+      <div className="panel-head">
+        <h2>{initialDownload ? 'Edit Download' : 'Add Download'}</h2>
+        <div className="button-row">
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit">Save</button>
+        </div>
+      </div>
+      {error ? <p className="error-line">{error}</p> : null}
+      <div className="form-grid">
+        <label>
+          Title
+          <input value={draft.title} onChange={(event) => update('title', event.target.value)} placeholder="Video title or URL label" />
+        </label>
+        <label>
+          Source
+          <input value={draft.source} onChange={(event) => update('source', event.target.value)} placeholder="Channel, feed, or manual URL" />
+        </label>
+        <label>
+          Quality
+          <select value={draft.quality} onChange={(event) => update('quality', event.target.value)}>
+            <option>1080p</option>
+            <option>720p</option>
+            <option>480p</option>
+            <option>mp3</option>
+          </select>
+        </label>
+        <label>
+          Status
+          <select value={draft.status} onChange={(event) => update('status', event.target.value)}>
+            <option>Queued</option>
+            <option>Downloading</option>
+            <option>Done</option>
+            <option>Failed</option>
+          </select>
+        </label>
+        <label>
+          Progress
+          <input type="number" min="0" max="100" value={draft.progress} onChange={(event) => update('progress', event.target.value)} />
+        </label>
+      </div>
+    </form>
+  );
+}
+
+function FeedForm({ initialFeed, onSave, onCancel }) {
   const [draft, setDraft] = useState({
-    name: '',
-    url: '',
-    rule: '1080p mp4',
-    status: 'Watching'
+    name: initialFeed?.name || '',
+    url: initialFeed?.url || '',
+    rule: initialFeed?.rule || '1080p mp4',
+    status: initialFeed?.status || 'Watching'
   });
   const [error, setError] = useState('');
 
@@ -263,26 +369,25 @@ function AddFeedForm({ onAdd, onCancel }) {
       setError('Feed URL harus dimulai dengan http:// atau https://.');
       return;
     }
-    onAdd({
-      id: Date.now(),
+    onSave({
+      id: initialFeed?.id || Date.now(),
       name,
       url,
       rule: draft.rule,
       status: draft.status,
-      lastCheck: 'Not checked yet'
+      lastCheck: initialFeed?.lastCheck || 'Not checked yet'
     });
-    setDraft({ name: '', url: '', rule: '1080p mp4', status: 'Watching' });
   };
 
   return (
     <form className="panel form-panel" onSubmit={submit}>
       <div className="panel-head">
-        <h2>Add RSS Feed</h2>
+        <h2>{initialFeed ? 'Edit RSS Feed' : 'Add RSS Feed'}</h2>
         <div className="button-row">
           <button type="button" onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit">Add</button>
+          <button type="submit">Save</button>
         </div>
       </div>
       {error ? <p className="error-line">{error}</p> : null}
@@ -316,22 +421,24 @@ function AddFeedForm({ onAdd, onCancel }) {
   );
 }
 
-function Overview({ feeds, onOpenAddFeed }) {
+function Overview({ downloads, feeds, onOpenAddDownload, onEditDownload, onDeleteDownload, onOpenAddFeed, onEditFeed, onDeleteFeed }) {
   const activeFeedCount = feeds.filter((feed) => feed.status === 'Watching').length;
   return (
     <div className="view-stack">
       <div className="stats-grid">
         <Stat label="Active feeds" value={String(activeFeedCount)} />
-        <Stat label="Queue items" value="3" />
+        <Stat label="Queue items" value={String(downloads.length)} />
         <Stat label="Storage used" value="284 GB" />
         <Stat label="Worker state" value="Online" />
       </div>
       <section className="panel">
         <div className="panel-head">
           <h2>Download Queue</h2>
-          <button type="button">Add URL</button>
+          <button type="button" onClick={onOpenAddDownload}>
+            Add URL
+          </button>
         </div>
-        <QueueTable />
+        <QueueTable downloads={downloads} onEdit={onEditDownload} onDelete={onDeleteDownload} />
       </section>
       <section className="panel">
         <div className="panel-head">
@@ -340,16 +447,33 @@ function Overview({ feeds, onOpenAddFeed }) {
             Add Feed
           </button>
         </div>
-        <FeedTable feeds={feeds} />
+        <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
       </section>
     </div>
   );
 }
 
-function RSSFeedsView({ feeds, showAddFeed, onOpenAddFeed, onCancelAddFeed, onAddFeed }) {
+function DownloadsView({ downloads, showForm, editingDownload, onOpenAdd, onCancel, onSave, onEdit, onDelete }) {
   return (
     <div className="view-stack">
-      {showAddFeed ? <AddFeedForm onAdd={onAddFeed} onCancel={onCancelAddFeed} /> : null}
+      {showForm ? <DownloadForm initialDownload={editingDownload} onSave={onSave} onCancel={onCancel} /> : null}
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Downloads</h2>
+          <button type="button" onClick={onOpenAdd}>
+            Add URL
+          </button>
+        </div>
+        <QueueTable downloads={downloads} onEdit={onEdit} onDelete={onDelete} />
+      </section>
+    </div>
+  );
+}
+
+function RSSFeedsView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFeed, onSaveFeed, onEditFeed, onDeleteFeed }) {
+  return (
+    <div className="view-stack">
+      {showForm ? <FeedForm initialFeed={editingFeed} onSave={onSaveFeed} onCancel={onCancelFeed} /> : null}
       <section className="panel">
         <div className="panel-head">
           <h2>RSS Feeds</h2>
@@ -357,7 +481,7 @@ function RSSFeedsView({ feeds, showAddFeed, onOpenAddFeed, onCancelAddFeed, onAd
             Add Feed
           </button>
         </div>
-        <FeedTable feeds={feeds} />
+        <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
       </section>
     </div>
   );
@@ -607,23 +731,71 @@ export default function App() {
   const [active, setActive] = useState('overview');
   const [roles, setRoles] = useState(initialRoles);
   const [settings, setSettings] = useState(() => loadJSON(settingsKey, defaultSettings));
+  const [downloads, setDownloads] = useState(() => loadArray(downloadsKey, initialDownloads));
   const [feeds, setFeeds] = useState(() => loadArray(feedsKey, initialFeeds));
-  const [showAddFeed, setShowAddFeed] = useState(false);
+  const [showDownloadForm, setShowDownloadForm] = useState(false);
+  const [editingDownload, setEditingDownload] = useState(null);
+  const [showFeedForm, setShowFeedForm] = useState(false);
+  const [editingFeed, setEditingFeed] = useState(null);
 
   const activeTitle = useMemo(() => flatMenu.find(([id]) => id === active)?.[1] || 'Overview', [active]);
 
-  const openAddFeed = () => {
-    setActive('rss');
-    setShowAddFeed(true);
+  const saveDownloads = (nextDownloads) => {
+    setDownloads(nextDownloads);
+    saveJSON(downloadsKey, nextDownloads);
   };
 
-  const addFeed = (feed) => {
-    setFeeds((current) => {
-      const nextFeeds = [feed, ...current];
-      saveJSON(feedsKey, nextFeeds);
-      return nextFeeds;
-    });
-    setShowAddFeed(false);
+  const openAddDownload = () => {
+    setActive('downloads');
+    setEditingDownload(null);
+    setShowDownloadForm(true);
+  };
+
+  const editDownload = (download) => {
+    setActive('downloads');
+    setEditingDownload(download);
+    setShowDownloadForm(true);
+  };
+
+  const saveDownload = (download) => {
+    const exists = downloads.some((item) => item.id === download.id);
+    const nextDownloads = exists ? downloads.map((item) => (item.id === download.id ? download : item)) : [download, ...downloads];
+    saveDownloads(nextDownloads);
+    setEditingDownload(null);
+    setShowDownloadForm(false);
+  };
+
+  const deleteDownload = (downloadID) => {
+    saveDownloads(downloads.filter((item) => item.id !== downloadID));
+  };
+
+  const saveFeeds = (nextFeeds) => {
+    setFeeds(nextFeeds);
+    saveJSON(feedsKey, nextFeeds);
+  };
+
+  const openAddFeed = () => {
+    setActive('rss');
+    setEditingFeed(null);
+    setShowFeedForm(true);
+  };
+
+  const editFeed = (feed) => {
+    setActive('rss');
+    setEditingFeed(feed);
+    setShowFeedForm(true);
+  };
+
+  const saveFeed = (feed) => {
+    const exists = feeds.some((item) => item.id === feed.id);
+    const nextFeeds = exists ? feeds.map((item) => (item.id === feed.id ? feed : item)) : [feed, ...feeds];
+    saveFeeds(nextFeeds);
+    setEditingFeed(null);
+    setShowFeedForm(false);
+  };
+
+  const deleteFeed = (feedID) => {
+    saveFeeds(feeds.filter((feed) => feed.id !== feedID));
   };
 
   if (!sessionUser) {
@@ -663,23 +835,46 @@ export default function App() {
             Logout
           </button>
         </header>
-        {active === 'overview' ? <Overview feeds={feeds} onOpenAddFeed={openAddFeed} /> : null}
+        {active === 'overview' ? (
+          <Overview
+            downloads={downloads}
+            feeds={feeds}
+            onOpenAddDownload={openAddDownload}
+            onEditDownload={editDownload}
+            onDeleteDownload={deleteDownload}
+            onOpenAddFeed={openAddFeed}
+            onEditFeed={editFeed}
+            onDeleteFeed={deleteFeed}
+          />
+        ) : null}
         {active === 'downloads' ? (
-          <section className="panel">
-            <div className="panel-head">
-              <h2>Downloads</h2>
-              <button type="button">Queue URL</button>
-            </div>
-            <QueueTable />
-          </section>
+          <DownloadsView
+            downloads={downloads}
+            showForm={showDownloadForm}
+            editingDownload={editingDownload}
+            onOpenAdd={openAddDownload}
+            onCancel={() => {
+              setEditingDownload(null);
+              setShowDownloadForm(false);
+            }}
+            onSave={saveDownload}
+            onEdit={editDownload}
+            onDelete={deleteDownload}
+          />
         ) : null}
         {active === 'rss' ? (
           <RSSFeedsView
             feeds={feeds}
-            showAddFeed={showAddFeed}
+            showForm={showFeedForm}
+            editingFeed={editingFeed}
             onOpenAddFeed={openAddFeed}
-            onCancelAddFeed={() => setShowAddFeed(false)}
-            onAddFeed={addFeed}
+            onCancelFeed={() => {
+              setEditingFeed(null);
+              setShowFeedForm(false);
+            }}
+            onSaveFeed={saveFeed}
+            onEditFeed={editFeed}
+            onDeleteFeed={deleteFeed}
           />
         ) : null}
         {active === 'users' ? <Users roles={roles} /> : null}

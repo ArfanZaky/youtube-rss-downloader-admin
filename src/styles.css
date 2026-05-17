@@ -254,6 +254,17 @@ h3 {
   overflow-x: auto;
 }
 
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table-actions button {
+  min-height: 32px;
+  padding: 6px 8px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
