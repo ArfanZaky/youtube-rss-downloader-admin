@@ -5,10 +5,11 @@ Admin console prototype for a YouTube downloader with RSS-based automatic downlo
 Current scope:
 
 - Pixel-styled admin shell.
-- Login screen with demo credentials.
+- Login screen with demo credentials and refresh-safe local session.
+- Parent-child menu with Administrator containing Users, Roles, Permissions, and Settings.
 - User, role, and permission management views.
 - RSS feed subscription table.
-- Download queue and downloader settings panels.
+- Download queue and editable downloader settings panels.
 
 Demo login:
 

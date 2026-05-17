@@ -1,4 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+const sessionKey = 'yt-rss-admin.session.v1';
+const settingsKey = 'yt-rss-admin.settings.v1';
 
 const permissions = [
   { id: 'dashboard.read', label: 'Dashboard', group: 'Core' },
@@ -33,15 +36,57 @@ const queue = [
   { id: 'Q-1040', title: 'React admin menus from scratch', source: 'Tutorial Archive', quality: '720p', status: 'Done', progress: 100 }
 ];
 
-const menu = [
-  ['overview', 'Overview'],
-  ['downloads', 'Downloads'],
-  ['rss', 'RSS Feeds'],
-  ['users', 'Users'],
-  ['roles', 'Roles'],
-  ['permissions', 'Permissions'],
-  ['settings', 'Settings']
+const menuGroups = [
+  {
+    id: 'main',
+    label: 'Main',
+    children: [
+      ['overview', 'Overview'],
+      ['downloads', 'Downloads'],
+      ['rss', 'RSS Feeds']
+    ]
+  },
+  {
+    id: 'administrator',
+    label: 'Administrator',
+    children: [
+      ['users', 'Users'],
+      ['roles', 'Roles'],
+      ['permissions', 'Permissions'],
+      ['settings', 'Settings']
+    ]
+  }
 ];
+
+const flatMenu = menuGroups.flatMap((group) => group.children);
+
+const defaultSettings = {
+  downloadPath: '/srv/media/youtube',
+  defaultQuality: '1080p',
+  filenameTemplate: '{channel}/{published_at}-{title}',
+  rssPollInterval: '15',
+  concurrentDownloads: 2,
+  archiveAfterDownload: true,
+  skipExisting: true,
+  webhookURL: '',
+  userAgent: 'YT-RSS-Downloader/0.1'
+};
+
+function loadJSON(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return { ...fallback, ...JSON.parse(raw) };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJSON(key, value) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
 
 function PixelMark() {
   return (
@@ -117,33 +162,6 @@ function ProgressBar({ value }) {
   );
 }
 
-function Overview() {
-  return (
-    <div className="view-stack">
-      <div className="stats-grid">
-        <Stat label="Active feeds" value="2" />
-        <Stat label="Queue items" value="3" />
-        <Stat label="Storage used" value="284 GB" />
-        <Stat label="Worker state" value="Online" />
-      </div>
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Download Queue</h2>
-          <button type="button">Add URL</button>
-        </div>
-        <QueueTable />
-      </section>
-      <section className="panel">
-        <div className="panel-head">
-          <h2>RSS Watchlist</h2>
-          <button type="button">Add Feed</button>
-        </div>
-        <FeedTable />
-      </section>
-    </div>
-  );
-}
-
 function QueueTable() {
   return (
     <div className="table-wrap">
@@ -202,6 +220,33 @@ function FeedTable() {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function Overview() {
+  return (
+    <div className="view-stack">
+      <div className="stats-grid">
+        <Stat label="Active feeds" value="2" />
+        <Stat label="Queue items" value="3" />
+        <Stat label="Storage used" value="284 GB" />
+        <Stat label="Worker state" value="Online" />
+      </div>
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Download Queue</h2>
+          <button type="button">Add URL</button>
+        </div>
+        <QueueTable />
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <h2>RSS Watchlist</h2>
+          <button type="button">Add Feed</button>
+        </div>
+        <FeedTable />
+      </section>
     </div>
   );
 }
@@ -320,52 +365,141 @@ function PermissionMatrix({ roles, setRoles }) {
   );
 }
 
-function Settings() {
+function Settings({ settings, setSettings }) {
+  const [draft, setDraft] = useState(settings);
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
+
+  const update = (key, value) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setNotice('');
+  };
+
+  const save = (event) => {
+    event.preventDefault();
+    const normalized = {
+      ...draft,
+      concurrentDownloads: Math.max(1, Math.min(8, Number(draft.concurrentDownloads) || 1))
+    };
+    setSettings(normalized);
+    saveJSON(settingsKey, normalized);
+    setNotice('Settings saved.');
+  };
+
+  const reset = () => {
+    setDraft(defaultSettings);
+    setSettings(defaultSettings);
+    saveJSON(settingsKey, defaultSettings);
+    setNotice('Settings reset.');
+  };
+
   return (
-    <section className="panel settings-grid">
-      <div>
-        <h2>Downloader Settings</h2>
-        <label>
-          Download path
-          <input defaultValue="/srv/media/youtube" />
-        </label>
-        <label>
-          Default quality
-          <select defaultValue="1080p">
-            <option>1080p</option>
-            <option>720p</option>
-            <option>audio only</option>
-          </select>
-        </label>
+    <form className="panel settings-form" onSubmit={save}>
+      <div className="panel-head">
+        <h2>Settings</h2>
+        <div className="button-row">
+          <button type="button" onClick={reset}>
+            Reset
+          </button>
+          <button type="submit">Save</button>
+        </div>
       </div>
-      <div>
-        <h2>RSS Scheduler</h2>
-        <label>
-          Poll interval
-          <select defaultValue="15">
-            <option value="5">5 minutes</option>
-            <option value="15">15 minutes</option>
-            <option value="30">30 minutes</option>
-          </select>
-        </label>
-        <label>
-          Concurrent downloads
-          <input type="number" defaultValue="2" min="1" max="8" />
-        </label>
+      {notice ? <p className="notice-line">{notice}</p> : null}
+      <div className="settings-grid">
+        <section>
+          <h3>Downloader</h3>
+          <label>
+            Download path
+            <input value={draft.downloadPath} onChange={(event) => update('downloadPath', event.target.value)} />
+          </label>
+          <label>
+            Default quality
+            <select value={draft.defaultQuality} onChange={(event) => update('defaultQuality', event.target.value)}>
+              <option>1080p</option>
+              <option>720p</option>
+              <option>480p</option>
+              <option>audio only</option>
+            </select>
+          </label>
+          <label>
+            Filename template
+            <input value={draft.filenameTemplate} onChange={(event) => update('filenameTemplate', event.target.value)} />
+          </label>
+        </section>
+        <section>
+          <h3>RSS Scheduler</h3>
+          <label>
+            Poll interval
+            <select value={draft.rssPollInterval} onChange={(event) => update('rssPollInterval', event.target.value)}>
+              <option value="5">5 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">60 minutes</option>
+            </select>
+          </label>
+          <label>
+            Concurrent downloads
+            <input type="number" value={draft.concurrentDownloads} min="1" max="8" onChange={(event) => update('concurrentDownloads', event.target.value)} />
+          </label>
+          <label>
+            Webhook URL
+            <input value={draft.webhookURL} onChange={(event) => update('webhookURL', event.target.value)} placeholder="https://example.com/hook" />
+          </label>
+        </section>
+        <section>
+          <h3>Rules</h3>
+          <label className="check-row">
+            <input type="checkbox" checked={draft.archiveAfterDownload} onChange={(event) => update('archiveAfterDownload', event.target.checked)} />
+            Archive video ID after download
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={draft.skipExisting} onChange={(event) => update('skipExisting', event.target.checked)} />
+            Skip existing files
+          </label>
+        </section>
+        <section>
+          <h3>Client</h3>
+          <label>
+            User agent
+            <input value={draft.userAgent} onChange={(event) => update('userAgent', event.target.value)} />
+          </label>
+        </section>
       </div>
-    </section>
+    </form>
   );
 }
 
+function usePersistentSession() {
+  const [sessionUser, setSessionUser] = useState(() => loadJSON(sessionKey, null));
+
+  const login = (user) => {
+    setSessionUser(user);
+    saveJSON(sessionKey, user);
+  };
+
+  const logout = () => {
+    setSessionUser(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(sessionKey);
+    }
+  };
+
+  return { sessionUser, login, logout };
+}
+
 export default function App() {
-  const [sessionUser, setSessionUser] = useState(null);
+  const { sessionUser, login, logout } = usePersistentSession();
   const [active, setActive] = useState('overview');
   const [roles, setRoles] = useState(initialRoles);
+  const [settings, setSettings] = useState(() => loadJSON(settingsKey, defaultSettings));
 
-  const activeTitle = useMemo(() => menu.find(([id]) => id === active)?.[1] || 'Overview', [active]);
+  const activeTitle = useMemo(() => flatMenu.find(([id]) => id === active)?.[1] || 'Overview', [active]);
 
   if (!sessionUser) {
-    return <Login onLogin={setSessionUser} />;
+    return <Login onLogin={login} />;
   }
 
   return (
@@ -379,10 +513,15 @@ export default function App() {
           </div>
         </div>
         <nav>
-          {menu.map(([id, label]) => (
-            <button key={id} type="button" className={active === id ? 'active' : ''} onClick={() => setActive(id)}>
-              {label}
-            </button>
+          {menuGroups.map((group) => (
+            <div className="nav-group" key={group.id}>
+              <p>{group.label}</p>
+              {group.children.map(([id, label]) => (
+                <button key={id} type="button" className={active === id ? 'active' : ''} onClick={() => setActive(id)}>
+                  {label}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>
@@ -390,9 +529,9 @@ export default function App() {
         <header className="topbar">
           <div>
             <h2>{activeTitle}</h2>
-            <p>Role: Owner · Permission: Full access</p>
+            <p>Role: Owner - Permission: Full access</p>
           </div>
-          <button type="button" onClick={() => setSessionUser(null)}>
+          <button type="button" onClick={logout}>
             Logout
           </button>
         </header>
@@ -418,7 +557,7 @@ export default function App() {
         {active === 'users' ? <Users roles={roles} /> : null}
         {active === 'roles' ? <Roles roles={roles} /> : null}
         {active === 'permissions' ? <PermissionMatrix roles={roles} setRoles={setRoles} /> : null}
-        {active === 'settings' ? <Settings /> : null}
+        {active === 'settings' ? <Settings settings={settings} setSettings={setSettings} /> : null}
       </main>
     </div>
   );

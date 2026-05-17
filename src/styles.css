@@ -31,7 +31,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -52,7 +53,8 @@ button.active {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 38px;
   border: 1px solid var(--border);
@@ -161,12 +163,23 @@ h3 {
 
 .sidebar nav {
   display: grid;
-  gap: 8px;
+  gap: 18px;
   margin-top: 24px;
+}
+
+.nav-group {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-group p {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .sidebar nav button {
   width: 100%;
+  padding-left: 20px;
   text-align: left;
 }
 
@@ -229,6 +242,12 @@ h3 {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .table-wrap {
@@ -296,13 +315,18 @@ th {
   padding: 6px 8px;
 }
 
+.settings-form {
+  display: grid;
+  gap: 14px;
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
 
-.settings-grid div {
+.settings-grid section {
   display: grid;
   align-content: start;
   gap: 14px;
@@ -312,6 +336,23 @@ input[type="checkbox"] {
   width: 18px;
   min-height: 18px;
   accent-color: var(--accent);
+}
+
+.check-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.check-row input {
+  flex: 0 0 auto;
+}
+
+.notice-line {
+  border: 1px solid var(--border);
+  background: #101010;
+  color: var(--accent);
+  padding: 10px;
 }
 
 @media (max-width: 860px) {
@@ -324,8 +365,12 @@ input[type="checkbox"] {
     border-bottom: 1px solid var(--border);
   }
 
-  .sidebar nav {
+  .nav-group {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nav-group p {
+    grid-column: 1 / -1;
   }
 
   .stats-grid,
