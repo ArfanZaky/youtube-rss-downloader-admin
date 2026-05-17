@@ -348,6 +348,10 @@ th {
   gap: 10px;
 }
 
+.compact-radio-grid {
+  margin-bottom: 14px;
+}
+
 .radio-card {
   align-items: center;
   border: 1px solid var(--border);

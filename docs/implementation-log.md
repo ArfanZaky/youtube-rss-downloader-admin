@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Added Channel URL type filtering for Watchlist Channel.
+- Files or subsystems touched: `src/App.jsx`, `src/styles.css`, and this implementation log.
+- Behavior/runtime effect: Channel URLs now has a second radio-card filter for Videos, Shorts, and Live; selecting a type changes the generated channel URL, and Add to Download creates a queued download item using the selected channel/type URL.
+- Validation status: `timeout 120s npm run build` completed successfully; local and public HTTP checks on port `4177` returned `200 OK`.
+- Open follow-up items: Resolve actual video entries from each channel tab when backend parsing/downloading is implemented.
+
+## 2026-05-17
+
 - Scope: Changed channel rows to store YouTube channel URLs instead of RSS feed URLs.
 - Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
 - Behavior/runtime effect: List Channel and Watchlist Channel now label and collect Channel URL values; default rows use YouTube channel-style URLs, and previously stored YouTube RSS feed URLs with `channel_id` are normalized to `/channel/{id}` at load time.
