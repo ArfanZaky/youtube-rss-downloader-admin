@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Connected Downloads queue to a real `yt-dlp` worker.
+- Files or subsystems touched: `vite.config.js`, `src/App.jsx`, and this implementation log.
+- Behavior/runtime effect: The server now watches SQLite downloads for `Queued` items, runs `yt-dlp` with the selected quality/audio mode, writes output to the stored path from Settings, and updates status/progress/error in SQLite; startup reconciliation marks old `Done` rows as `Failed` if their output file is missing; the frontend polls SQLite instead of simulating progress and shows error text in the Downloads table.
+- Validation status: `timeout 120s npm run build` completed successfully; Vite dev server restarted on port `4177`; public page check returned `200 OK`; existing simulated `Done` row with missing output was reconciled to `Failed`.
+- Open follow-up items: Add queue controls, cancellation, concurrency settings, and stronger file naming/collision handling.
+
+## 2026-05-17
+
 - Scope: Added SQLite-backed persistence for admin datasets.
 - Files or subsystems touched: `vite.config.js`, `src/App.jsx`, `.gitignore`, `README.md`, and this implementation log.
 - Behavior/runtime effect: The Vite server now creates `data/app.db` with an `app_store` table and exposes `/api/store`; the frontend syncs settings, downloads, RSS feeds, and channels to SQLite while keeping localStorage as a browser fallback/migration source.

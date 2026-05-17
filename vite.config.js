@@ -1,12 +1,15 @@
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { defineConfig } from 'vite';
 
 const dataDir = path.resolve('data');
 const dbPath = path.join(dataDir, 'app.db');
 let db;
+let workerStarted = false;
+let activeDownloadID = '';
 
 const youtubeHeaders = {
   'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',
@@ -31,6 +34,102 @@ function getDB() {
     )
   `);
   return db;
+}
+
+function getStoreValue(key, fallback) {
+  const row = getDB().prepare('SELECT value FROM app_store WHERE key = ?').get(key);
+  if (!row) return fallback;
+  try {
+    return JSON.parse(row.value);
+  } catch {
+    return fallback;
+  }
+}
+
+function setStoreValue(key, value) {
+  getDB()
+    .prepare('INSERT INTO app_store (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP')
+    .run(key, JSON.stringify(value));
+}
+
+function updateDownload(downloadID, patch) {
+  const downloads = getStoreValue('downloads', []);
+  const nextDownloads = downloads.map((item) => (item.id === downloadID ? { ...item, ...patch } : item));
+  setStoreValue('downloads', nextDownloads);
+  return nextDownloads;
+}
+
+function qualityArgs(quality) {
+  const value = String(quality || '').toLowerCase();
+  if (value.includes('mp3')) return ['-x', '--audio-format', 'mp3'];
+  const height = Number.parseInt(value, 10);
+  if (Number.isFinite(height)) return ['-f', `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`];
+  return ['-f', 'bestvideo+bestaudio/best'];
+}
+
+function runDownload(item) {
+  activeDownloadID = item.id;
+  const source = String(item.source || '').trim();
+  if (!source.startsWith('http://') && !source.startsWith('https://')) {
+    updateDownload(item.id, { status: 'Failed', progress: 0, error: 'Source must be a URL.' });
+    activeDownloadID = '';
+    return;
+  }
+
+  const outputPath = String(item.path || '').trim();
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  updateDownload(item.id, { status: 'Downloading', progress: Math.max(1, Number(item.progress) || 0), error: '' });
+
+  const args = ['--newline', '--no-playlist', ...qualityArgs(item.quality), '-o', outputPath, source];
+  const child = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  const handleOutput = (chunk) => {
+    const text = String(chunk);
+    const match = text.match(/\[download\]\s+([0-9.]+)%/);
+    if (match) {
+      updateDownload(item.id, { progress: Math.min(99, Number(match[1])) });
+    }
+  };
+
+  child.stdout.on('data', handleOutput);
+  child.stderr.on('data', handleOutput);
+  child.on('close', (code) => {
+    if (code === 0) {
+      updateDownload(item.id, { status: 'Done', progress: 100, error: '' });
+    } else {
+      updateDownload(item.id, { status: 'Failed', error: `yt-dlp exited with code ${code}` });
+    }
+    activeDownloadID = '';
+  });
+}
+
+function reconcileDownloads() {
+  const downloads = getStoreValue('downloads', []);
+  let changed = false;
+  const nextDownloads = downloads.map((item) => {
+    if (item.status === 'Done' && item.path && !fs.existsSync(item.path)) {
+      changed = true;
+      return { ...item, status: 'Failed', error: 'Output file missing. Re-add this URL to download it again.' };
+    }
+    return item;
+  });
+  if (changed) setStoreValue('downloads', nextDownloads);
+}
+
+function startDownloadWorker() {
+  if (workerStarted) return;
+  workerStarted = true;
+  reconcileDownloads();
+  windowlessInterval(() => {
+    if (activeDownloadID) return;
+    const downloads = getStoreValue('downloads', []);
+    const next = downloads.find((item) => item.status === 'Queued');
+    if (next) runDownload(next);
+  }, 2500);
+}
+
+function windowlessInterval(fn, ms) {
+  setInterval(fn, ms);
 }
 
 function readBody(req) {
@@ -164,6 +263,8 @@ function youtubeAPIMiddleware() {
   return {
     name: 'youtube-api-middleware',
     configureServer(server) {
+      getDB();
+      startDownloadWorker();
       server.middlewares.use('/api/store', handleStore);
       server.middlewares.use('/api/channel-urls', handleChannelURLs);
     }

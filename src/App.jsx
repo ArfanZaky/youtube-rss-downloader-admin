@@ -275,6 +275,7 @@ function QueueTable({ downloads, onEdit, onDelete }) {
             <th>Status</th>
             <th>Progress</th>
             <th>Path</th>
+            <th>Error</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -290,6 +291,7 @@ function QueueTable({ downloads, onEdit, onDelete }) {
                 <ProgressBar value={item.progress} />
               </td>
               <td className="mono-cell">{item.path || '-'}</td>
+              <td className="mono-cell">{item.error || '-'}</td>
               <td>
                 <div className="table-actions">
                   <button type="button" onClick={() => onEdit(item)}>
@@ -1013,26 +1015,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setDownloads((current) => {
-        const activeIndex = current.findIndex((item) => item.status === 'Downloading');
-        const queuedIndex = current.findIndex((item) => item.status === 'Queued');
-        const targetIndex = activeIndex >= 0 ? activeIndex : queuedIndex;
-        if (targetIndex < 0) return current;
-
-        const nextDownloads = current.map((item, index) => {
-          if (index !== targetIndex) return item;
-          if (item.status === 'Queued') {
-            return { ...item, status: 'Downloading', progress: Math.max(5, Number(item.progress) || 0) };
-          }
-          const nextProgress = Math.min(100, Number(item.progress || 0) + 15);
-          return { ...item, status: nextProgress >= 100 ? 'Done' : 'Downloading', progress: nextProgress };
-        });
-        saveJSON(downloadsKey, nextDownloads);
-        saveDBValue('downloads', nextDownloads);
-        return nextDownloads;
-      });
-    }, 1500);
+    const timer = window.setInterval(async () => {
+      try {
+        const payload = await loadDBValue('downloads');
+        if (payload.exists && Array.isArray(payload.value)) {
+          setDownloads(payload.value);
+          saveJSON(downloadsKey, payload.value);
+        }
+      } catch {
+      }
+    }, 2000);
     return () => window.clearInterval(timer);
   }, []);
 
