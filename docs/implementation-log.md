@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Corrected Watchlist Channel type-specific URL loading.
+- Files or subsystems touched: `vite.config.js`, `src/App.jsx`, and this implementation log.
+- Behavior/runtime effect: Channel URL lookups now request the actual YouTube tab paths for each type (`/videos`, `/shorts`, `/streams`) instead of using RSS for Videos first; switching filters clears stale rows and fetches by selected type ID.
+- Validation status: `timeout 120s npm run build` completed successfully; Vite dev server restarted on port `4177`; local API checks for Sleepybloke returned distinct URL sets for Videos, Shorts, and Live; public page check returned `200 OK`.
+- Open follow-up items: Add richer title extraction from tab pages if YouTube tab HTML does not expose titles cleanly.
+
+## 2026-05-17
+
 - Scope: Replaced placeholder Watchlist Channel URL rows with live YouTube lookups.
 - Files or subsystems touched: `vite.config.js`, `src/App.jsx`, and this implementation log.
 - Behavior/runtime effect: The Vite dev server now exposes `/api/channel-urls`, resolves a YouTube channel URL to real RSS/video data, and Watchlist Channel loads real URL rows instead of generated dummy rows before queuing selected rows into Downloads.

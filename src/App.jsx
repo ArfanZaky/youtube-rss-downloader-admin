@@ -532,6 +532,7 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
       return undefined;
     }
     const controller = new AbortController();
+    setVideoRows([]);
     setVideoLoading(true);
     setVideoError('');
     fetch(`/api/channel-urls?url=${encodeURIComponent(selectedFeed.url)}&type=${encodeURIComponent(selectedType.id)}`, { signal: controller.signal })
@@ -549,7 +550,7 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
         if (!controller.signal.aborted) setVideoLoading(false);
       });
     return () => controller.abort();
-  }, [selectedFeed, selectedType]);
+  }, [selectedFeed?.url, selectedType.id]);
 
   return (
     <div className="view-stack">

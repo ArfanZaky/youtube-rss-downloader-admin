@@ -62,7 +62,7 @@ async function fetchRSSRows(channelURL) {
 
 async function fetchTabRows(channelURL, type) {
   const baseURL = channelURL.replace(/\/+$/, '');
-  const tabPath = type === 'shorts' ? 'shorts' : 'streams';
+  const tabPath = type === 'shorts' ? 'shorts' : type === 'live' ? 'streams' : 'videos';
   const response = await fetch(`${baseURL}/${tabPath}`, { headers: youtubeHeaders });
   const html = await response.text();
   const ids = collectVideoIDs(html, type);
@@ -82,7 +82,10 @@ async function handleChannelURLs(req, res) {
       sendJSON(res, 400, { error: 'Missing channel URL.' });
       return;
     }
-    const rows = type === 'videos' ? await fetchRSSRows(channelURL) : await fetchTabRows(channelURL, type);
+    let rows = await fetchTabRows(channelURL, type);
+    if (type === 'videos' && rows.length === 0) {
+      rows = await fetchRSSRows(channelURL);
+    }
     sendJSON(res, 200, { rows });
   } catch (error) {
     sendJSON(res, 500, { error: String(error?.message || error) });
