@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Changed channel rows to store YouTube channel URLs instead of RSS feed URLs.
+- Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
+- Behavior/runtime effect: List Channel and Watchlist Channel now label and collect Channel URL values; default rows use YouTube channel-style URLs, and previously stored YouTube RSS feed URLs with `channel_id` are normalized to `/channel/{id}` at load time.
+- Validation status: `timeout 120s npm run build` completed successfully; local and public HTTP checks on port `4177` returned `200 OK`.
+- Open follow-up items: Add backend channel URL resolution so handles/channel URLs can be converted into RSS feed URLs automatically during scheduler polling.
+
+## 2026-05-17
+
 - Scope: Changed Watchlist Channel into a channel URL picker feeding Downloads.
 - Files or subsystems touched: `src/App.jsx`, `src/styles.css`, and this implementation log.
 - Behavior/runtime effect: Watchlist Channel now shows a radio-card filter sourced from watched channels in List Channel; selecting a channel displays its URL table, and Add to Download creates a queued Downloads item from that channel URL.

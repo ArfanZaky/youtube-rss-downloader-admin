@@ -27,9 +27,9 @@ const initialUsers = [
 ];
 
 const initialFeeds = [
-  { id: 1, name: 'Tech Reviews', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-tech', rule: '1080p mp4', status: 'Watching', lastCheck: '2 min ago' },
-  { id: 2, name: 'Podcast Clips', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-podcast', rule: 'audio mp3', status: 'Paused', lastCheck: '1 hour ago' },
-  { id: 3, name: 'Tutorial Archive', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-course', rule: '720p mp4', status: 'Watching', lastCheck: '9 min ago' }
+  { id: 1, name: 'Tech Reviews', url: 'https://www.youtube.com/@techreviews', rule: '1080p mp4', status: 'Watching', lastCheck: '2 min ago' },
+  { id: 2, name: 'Podcast Clips', url: 'https://www.youtube.com/@podcastclips', rule: 'audio mp3', status: 'Paused', lastCheck: '1 hour ago' },
+  { id: 3, name: 'Tutorial Archive', url: 'https://www.youtube.com/@tutorialarchive', rule: '720p mp4', status: 'Watching', lastCheck: '9 min ago' }
 ];
 
 const initialDownloads = [
@@ -108,6 +108,15 @@ function loadArray(key, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function normalizeChannelRows(rows) {
+  return rows.map((row) => {
+    const url = String(row.url || '');
+    const channelID = url.match(/[?&]channel_id=([^&]+)/)?.[1];
+    if (!channelID) return row;
+    return { ...row, url: `https://www.youtube.com/channel/${channelID}` };
+  });
 }
 
 function PixelMark() {
@@ -235,7 +244,7 @@ function FeedTable({ feeds, onEdit, onDelete }) {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Feed URL</th>
+            <th>Channel URL</th>
             <th>Rule</th>
             <th>Status</th>
             <th>Last Check</th>
@@ -370,11 +379,11 @@ function FeedForm({ initialFeed, onSave, onCancel }) {
     const name = draft.name.trim();
     const url = draft.url.trim();
     if (!name || !url) {
-      setError('Name dan Feed URL wajib diisi.');
+      setError('Name dan Channel URL wajib diisi.');
       return;
     }
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      setError('Feed URL harus dimulai dengan http:// atau https://.');
+      setError('Channel URL harus dimulai dengan http:// atau https://.');
       return;
     }
     onSave({
@@ -405,8 +414,8 @@ function FeedForm({ initialFeed, onSave, onCancel }) {
           <input value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="Channel or playlist name" />
         </label>
         <label>
-          Feed URL
-          <input value={draft.url} onChange={(event) => update('url', event.target.value)} placeholder="https://www.youtube.com/feeds/videos.xml?channel_id=..." />
+          Channel URL
+          <input value={draft.url} onChange={(event) => update('url', event.target.value)} placeholder="https://www.youtube.com/@Sleepybloke" />
         </label>
         <label>
           Rule
@@ -833,7 +842,7 @@ export default function App() {
   const [roles, setRoles] = useState(initialRoles);
   const [settings, setSettings] = useState(() => loadJSON(settingsKey, defaultSettings));
   const [downloads, setDownloads] = useState(() => loadArray(downloadsKey, initialDownloads));
-  const [feeds, setFeeds] = useState(() => loadArray(feedsKey, initialFeeds));
+  const [feeds, setFeeds] = useState(() => normalizeChannelRows(loadArray(feedsKey, initialFeeds)));
   const [showDownloadForm, setShowDownloadForm] = useState(false);
   const [editingDownload, setEditingDownload] = useState(null);
   const [showFeedForm, setShowFeedForm] = useState(false);

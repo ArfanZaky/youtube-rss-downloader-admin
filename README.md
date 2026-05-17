@@ -9,7 +9,7 @@ Current scope:
 - Parent-child menu with Administrator containing Users, Roles, Permissions, and Settings.
 - Parent-child Channel menu containing Watchlist Channel and List Channel.
 - User, role, and permission management views.
-- RSS feed subscription table with local create, edit, and delete actions.
+- Channel list table with local create, edit, and delete actions.
 - Download queue with local create, edit, and delete actions.
 - Editable downloader settings panels.
 
