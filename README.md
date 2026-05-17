@@ -13,6 +13,7 @@ Current scope:
 - Channel list table with separate local create, edit, and delete actions.
 - Download queue with local create, edit, delete, automatic progress, and save paths from Settings.
 - Editable downloader settings panels.
+- SQLite-backed server store for settings, downloads, RSS feeds, and channel list.
 
 Demo login:
 

@@ -111,6 +111,21 @@ function saveJSON(key, value) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+async function loadDBValue(key) {
+  const response = await fetch(`/api/store?key=${encodeURIComponent(key)}`);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload?.error || `Failed to load ${key}.`);
+  return payload;
+}
+
+function saveDBValue(key, value) {
+  fetch(`/api/store?key=${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(value)
+  }).catch(() => {});
+}
+
 function loadArray(key, fallback) {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -822,7 +837,7 @@ function PermissionMatrix({ roles, setRoles }) {
   );
 }
 
-function Settings({ settings, setSettings }) {
+function Settings({ settings, setSettings, onPersistSettings }) {
   const [draft, setDraft] = useState(settings);
   const [notice, setNotice] = useState('');
 
@@ -843,6 +858,7 @@ function Settings({ settings, setSettings }) {
     };
     setSettings(normalized);
     saveJSON(settingsKey, normalized);
+    onPersistSettings(normalized);
     setNotice('Settings saved.');
   };
 
@@ -850,6 +866,7 @@ function Settings({ settings, setSettings }) {
     setDraft(defaultSettings);
     setSettings(defaultSettings);
     saveJSON(settingsKey, defaultSettings);
+    onPersistSettings(defaultSettings);
     setNotice('Settings reset.');
   };
 
@@ -964,9 +981,35 @@ export default function App() {
 
   const activeTitle = useMemo(() => flatMenu.find(([id]) => id === active)?.[1] || 'Overview', [active]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const syncDataset = async ({ dbKey, localKey, value, setter }) => {
+      const payload = await loadDBValue(dbKey);
+      if (cancelled) return;
+      if (payload.exists) {
+        setter(payload.value);
+        saveJSON(localKey, payload.value);
+        return;
+      }
+      saveDBValue(dbKey, value);
+    };
+
+    Promise.all([
+      syncDataset({ dbKey: 'settings', localKey: settingsKey, value: settings, setter: setSettings }),
+      syncDataset({ dbKey: 'downloads', localKey: downloadsKey, value: downloads, setter: setDownloads }),
+      syncDataset({ dbKey: 'rssFeeds', localKey: rssFeedsKey, value: rssFeeds, setter: setRSSFeeds }),
+      syncDataset({ dbKey: 'channels', localKey: channelsKey, value: channels, setter: setChannels })
+    ]).catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const saveDownloads = (nextDownloads) => {
     setDownloads(nextDownloads);
     saveJSON(downloadsKey, nextDownloads);
+    saveDBValue('downloads', nextDownloads);
   };
 
   useEffect(() => {
@@ -986,6 +1029,7 @@ export default function App() {
           return { ...item, status: nextProgress >= 100 ? 'Done' : 'Downloading', progress: nextProgress };
         });
         saveJSON(downloadsKey, nextDownloads);
+        saveDBValue('downloads', nextDownloads);
         return nextDownloads;
       });
     }, 1500);
@@ -1037,6 +1081,7 @@ export default function App() {
   const saveRSSFeeds = (nextFeeds) => {
     setRSSFeeds(nextFeeds);
     saveJSON(rssFeedsKey, nextFeeds);
+    saveDBValue('rssFeeds', nextFeeds);
   };
 
   const openAddRSSFeed = () => {
@@ -1066,6 +1111,7 @@ export default function App() {
   const saveChannels = (nextChannels) => {
     setChannels(nextChannels);
     saveJSON(channelsKey, nextChannels);
+    saveDBValue('channels', nextChannels);
   };
 
   const openAddChannel = () => {
@@ -1192,7 +1238,7 @@ export default function App() {
         {active === 'users' ? <Users roles={roles} /> : null}
         {active === 'roles' ? <Roles roles={roles} /> : null}
         {active === 'permissions' ? <PermissionMatrix roles={roles} setRoles={setRoles} /> : null}
-        {active === 'settings' ? <Settings settings={settings} setSettings={setSettings} /> : null}
+        {active === 'settings' ? <Settings settings={settings} setSettings={setSettings} onPersistSettings={(nextSettings) => saveDBValue('settings', nextSettings)} /> : null}
       </main>
     </div>
   );

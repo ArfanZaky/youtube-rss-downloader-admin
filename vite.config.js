@@ -1,5 +1,12 @@
 import react from '@vitejs/plugin-react';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { defineConfig } from 'vite';
+
+const dataDir = path.resolve('data');
+const dbPath = path.join(dataDir, 'app.db');
+let db;
 
 const youtubeHeaders = {
   'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',
@@ -10,6 +17,67 @@ function sendJSON(res, status, payload) {
   res.statusCode = status;
   res.setHeader('content-type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(payload));
+}
+
+function getDB() {
+  if (db) return db;
+  fs.mkdirSync(dataDir, { recursive: true });
+  db = new DatabaseSync(dbPath);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_store (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  return db;
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 5_000_000) {
+        reject(new Error('Request body too large.'));
+        req.destroy();
+      }
+    });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
+async function handleStore(req, res) {
+  try {
+    const requestURL = new URL(req.url, 'http://localhost');
+    const key = requestURL.searchParams.get('key');
+    if (!key || !/^[a-zA-Z0-9_-]+$/.test(key)) {
+      sendJSON(res, 400, { error: 'Invalid store key.' });
+      return;
+    }
+
+    const database = getDB();
+    if (req.method === 'GET') {
+      const row = database.prepare('SELECT value, updated_at FROM app_store WHERE key = ?').get(key);
+      sendJSON(res, 200, { exists: Boolean(row), value: row ? JSON.parse(row.value) : null, updatedAt: row?.updated_at || null });
+      return;
+    }
+
+    if (req.method === 'PUT') {
+      const body = await readBody(req);
+      const value = JSON.parse(body || 'null');
+      database
+        .prepare('INSERT INTO app_store (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP')
+        .run(key, JSON.stringify(value));
+      sendJSON(res, 200, { ok: true });
+      return;
+    }
+
+    sendJSON(res, 405, { error: 'Method not allowed.' });
+  } catch (error) {
+    sendJSON(res, 500, { error: String(error?.message || error) });
+  }
 }
 
 function collectVideoIDs(html, mode) {
@@ -96,6 +164,7 @@ function youtubeAPIMiddleware() {
   return {
     name: 'youtube-api-middleware',
     configureServer(server) {
+      server.middlewares.use('/api/store', handleStore);
       server.middlewares.use('/api/channel-urls', handleChannelURLs);
     }
   };

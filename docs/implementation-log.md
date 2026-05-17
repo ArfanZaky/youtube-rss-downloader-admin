@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Added SQLite-backed persistence for admin datasets.
+- Files or subsystems touched: `vite.config.js`, `src/App.jsx`, `.gitignore`, `README.md`, and this implementation log.
+- Behavior/runtime effect: The Vite server now creates `data/app.db` with an `app_store` table and exposes `/api/store`; the frontend syncs settings, downloads, RSS feeds, and channels to SQLite while keeping localStorage as a browser fallback/migration source.
+- Validation status: `timeout 120s npm run build` completed successfully; Vite dev server restarted on port `4177`; `/api/store?key=channels` returned SQLite-backed data; local channel URL API still returned real Sleepybloke rows; public page check returned `200 OK`.
+- Open follow-up items: Replace the generic key-value store with normalized SQLite tables and production backend routes when downloader workers are implemented.
+
+## 2026-05-17
+
 - Scope: Hardened local storage bootstrap to avoid data reset during app changes.
 - Files or subsystems touched: `src/App.jsx` and this implementation log.
 - Behavior/runtime effect: RSS, channel, and download seed data is now written only when no saved dataset exists; legacy mixed RSS/channel rows are migrated once into separate storage keys and persisted so future code changes do not re-run default seed data over saved rows.
