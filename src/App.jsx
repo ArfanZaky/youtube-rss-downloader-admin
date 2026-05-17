@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 const sessionKey = 'yt-rss-admin.session.v1';
 const settingsKey = 'yt-rss-admin.settings.v1';
+const feedsKey = 'yt-rss-admin.feeds.v1';
 
 const permissions = [
   { id: 'dashboard.read', label: 'Dashboard', group: 'Core' },
@@ -24,7 +25,7 @@ const initialUsers = [
   { id: 3, username: 'viewer', name: 'Read Only', role: 'viewer', status: 'Invited', lastLogin: '-' }
 ];
 
-const feeds = [
+const initialFeeds = [
   { id: 1, name: 'Tech Reviews', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-tech', rule: '1080p mp4', status: 'Watching', lastCheck: '2 min ago' },
   { id: 2, name: 'Podcast Clips', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-podcast', rule: 'audio mp3', status: 'Paused', lastCheck: '1 hour ago' },
   { id: 3, name: 'Tutorial Archive', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-course', rule: '720p mp4', status: 'Watching', lastCheck: '9 min ago' }
@@ -86,6 +87,18 @@ function loadJSON(key, fallback) {
 function saveJSON(key, value) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function loadArray(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function PixelMark() {
@@ -195,7 +208,7 @@ function QueueTable() {
   );
 }
 
-function FeedTable() {
+function FeedTable({ feeds }) {
   return (
     <div className="table-wrap">
       <table>
@@ -224,11 +237,91 @@ function FeedTable() {
   );
 }
 
-function Overview() {
+function AddFeedForm({ onAdd, onCancel }) {
+  const [draft, setDraft] = useState({
+    name: '',
+    url: '',
+    rule: '1080p mp4',
+    status: 'Watching'
+  });
+  const [error, setError] = useState('');
+
+  const update = (key, value) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setError('');
+  };
+
+  const submit = (event) => {
+    event.preventDefault();
+    const name = draft.name.trim();
+    const url = draft.url.trim();
+    if (!name || !url) {
+      setError('Name dan Feed URL wajib diisi.');
+      return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      setError('Feed URL harus dimulai dengan http:// atau https://.');
+      return;
+    }
+    onAdd({
+      id: Date.now(),
+      name,
+      url,
+      rule: draft.rule,
+      status: draft.status,
+      lastCheck: 'Not checked yet'
+    });
+    setDraft({ name: '', url: '', rule: '1080p mp4', status: 'Watching' });
+  };
+
+  return (
+    <form className="panel form-panel" onSubmit={submit}>
+      <div className="panel-head">
+        <h2>Add RSS Feed</h2>
+        <div className="button-row">
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit">Add</button>
+        </div>
+      </div>
+      {error ? <p className="error-line">{error}</p> : null}
+      <div className="form-grid">
+        <label>
+          Name
+          <input value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="Channel or playlist name" />
+        </label>
+        <label>
+          Feed URL
+          <input value={draft.url} onChange={(event) => update('url', event.target.value)} placeholder="https://www.youtube.com/feeds/videos.xml?channel_id=..." />
+        </label>
+        <label>
+          Rule
+          <select value={draft.rule} onChange={(event) => update('rule', event.target.value)}>
+            <option>1080p mp4</option>
+            <option>720p mp4</option>
+            <option>480p mp4</option>
+            <option>audio mp3</option>
+          </select>
+        </label>
+        <label>
+          Status
+          <select value={draft.status} onChange={(event) => update('status', event.target.value)}>
+            <option>Watching</option>
+            <option>Paused</option>
+          </select>
+        </label>
+      </div>
+    </form>
+  );
+}
+
+function Overview({ feeds, onOpenAddFeed }) {
+  const activeFeedCount = feeds.filter((feed) => feed.status === 'Watching').length;
   return (
     <div className="view-stack">
       <div className="stats-grid">
-        <Stat label="Active feeds" value="2" />
+        <Stat label="Active feeds" value={String(activeFeedCount)} />
         <Stat label="Queue items" value="3" />
         <Stat label="Storage used" value="284 GB" />
         <Stat label="Worker state" value="Online" />
@@ -243,9 +336,28 @@ function Overview() {
       <section className="panel">
         <div className="panel-head">
           <h2>RSS Watchlist</h2>
-          <button type="button">Add Feed</button>
+          <button type="button" onClick={onOpenAddFeed}>
+            Add Feed
+          </button>
         </div>
-        <FeedTable />
+        <FeedTable feeds={feeds} />
+      </section>
+    </div>
+  );
+}
+
+function RSSFeedsView({ feeds, showAddFeed, onOpenAddFeed, onCancelAddFeed, onAddFeed }) {
+  return (
+    <div className="view-stack">
+      {showAddFeed ? <AddFeedForm onAdd={onAddFeed} onCancel={onCancelAddFeed} /> : null}
+      <section className="panel">
+        <div className="panel-head">
+          <h2>RSS Feeds</h2>
+          <button type="button" onClick={onOpenAddFeed}>
+            Add Feed
+          </button>
+        </div>
+        <FeedTable feeds={feeds} />
       </section>
     </div>
   );
@@ -495,8 +607,24 @@ export default function App() {
   const [active, setActive] = useState('overview');
   const [roles, setRoles] = useState(initialRoles);
   const [settings, setSettings] = useState(() => loadJSON(settingsKey, defaultSettings));
+  const [feeds, setFeeds] = useState(() => loadArray(feedsKey, initialFeeds));
+  const [showAddFeed, setShowAddFeed] = useState(false);
 
   const activeTitle = useMemo(() => flatMenu.find(([id]) => id === active)?.[1] || 'Overview', [active]);
+
+  const openAddFeed = () => {
+    setActive('rss');
+    setShowAddFeed(true);
+  };
+
+  const addFeed = (feed) => {
+    setFeeds((current) => {
+      const nextFeeds = [feed, ...current];
+      saveJSON(feedsKey, nextFeeds);
+      return nextFeeds;
+    });
+    setShowAddFeed(false);
+  };
 
   if (!sessionUser) {
     return <Login onLogin={login} />;
@@ -535,7 +663,7 @@ export default function App() {
             Logout
           </button>
         </header>
-        {active === 'overview' ? <Overview /> : null}
+        {active === 'overview' ? <Overview feeds={feeds} onOpenAddFeed={openAddFeed} /> : null}
         {active === 'downloads' ? (
           <section className="panel">
             <div className="panel-head">
@@ -546,13 +674,13 @@ export default function App() {
           </section>
         ) : null}
         {active === 'rss' ? (
-          <section className="panel">
-            <div className="panel-head">
-              <h2>RSS Feeds</h2>
-              <button type="button">Add Feed</button>
-            </div>
-            <FeedTable />
-          </section>
+          <RSSFeedsView
+            feeds={feeds}
+            showAddFeed={showAddFeed}
+            onOpenAddFeed={openAddFeed}
+            onCancelAddFeed={() => setShowAddFeed(false)}
+            onAddFeed={addFeed}
+          />
         ) : null}
         {active === 'users' ? <Users roles={roles} /> : null}
         {active === 'roles' ? <Roles roles={roles} /> : null}

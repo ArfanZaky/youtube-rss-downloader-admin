@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Implemented the RSS Add Feed action.
+- Files or subsystems touched: `src/App.jsx`, `src/styles.css`, `README.md`, and this implementation log.
+- Behavior/runtime effect: The Add Feed button now opens a controlled RSS feed form, validates required name and HTTP(S) URL fields, inserts the new feed at the top of the table, updates active feed counts, and persists feed rows in `localStorage` across refreshes.
+- Validation status: `timeout 120s npm run build` completed successfully; local and public HTTP checks on port `4177` returned `200 OK`.
+- Open follow-up items: Replace localStorage feed persistence with backend RSS feed CRUD API and scheduler integration.
+
+## 2026-05-17
+
 - Scope: Improved admin navigation, login persistence, and editable settings.
 - Files or subsystems touched: `src/App.jsx`, `src/styles.css`, `README.md`, and this implementation log.
 - Behavior/runtime effect: Login session now persists in `localStorage` across browser refreshes until Logout; sidebar navigation now groups Users, Roles, Permissions, and Settings under the Administrator parent; Settings now uses editable controlled fields with Save and Reset actions persisted to `localStorage`.
