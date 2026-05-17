@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Fixed downloader worker command selection and failure reporting.
+- Files or subsystems touched: `vite.config.js`, `.gitignore`, `CHANGELOG.md`, and this implementation log.
+- Behavior/runtime effect: The server now prefers the updated local `bin/yt-dlp` binary before falling back to PATH, so downloads no longer use the outdated system `yt-dlp`; failed downloads keep the latest stderr text in SQLite for the Downloads error column; the local binary is ignored by Git.
+- Validation status: `timeout 120s npm run build` completed successfully; Vite dev server restarted on port `4177`; public page check returned `200 OK`; the previously failed item retried to `Done` and produced `/srv/media/youtube/94zbglypw5m.mp4.webm`.
+- Open follow-up items: Add a managed updater/version check for `yt-dlp` so YouTube extractor changes can be handled without manual binary replacement.
+
+## 2026-05-17
+
 - Scope: Connected Downloads queue to a real `yt-dlp` worker.
 - Files or subsystems touched: `vite.config.js`, `src/App.jsx`, and this implementation log.
 - Behavior/runtime effect: The server now watches SQLite downloads for `Queued` items, runs `yt-dlp` with the selected quality/audio mode, writes output to the stored path from Settings, and updates status/progress/error in SQLite; startup reconciliation marks old `Done` rows as `Failed` if their output file is missing; the frontend polls SQLite instead of simulating progress and shows error text in the Downloads table.

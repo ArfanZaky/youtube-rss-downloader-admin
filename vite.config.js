@@ -7,6 +7,7 @@ import { defineConfig } from 'vite';
 
 const dataDir = path.resolve('data');
 const dbPath = path.join(dataDir, 'app.db');
+const localYTDLPPath = path.resolve('bin', 'yt-dlp');
 let db;
 let workerStarted = false;
 let activeDownloadID = '';
@@ -67,6 +68,25 @@ function qualityArgs(quality) {
   return ['-f', 'bestvideo+bestaudio/best'];
 }
 
+function getYTDLPCommand() {
+  return fs.existsSync(localYTDLPPath) ? localYTDLPPath : 'yt-dlp';
+}
+
+function resolveFinalOutputPath(outputPath) {
+  if (fs.existsSync(outputPath)) return outputPath;
+  const directory = path.dirname(outputPath);
+  const baseName = path.basename(outputPath);
+  if (!fs.existsSync(directory)) return outputPath;
+  const candidates = fs.readdirSync(directory)
+    .filter((fileName) => fileName.startsWith(`${baseName}.`) && !fileName.endsWith('.part'))
+    .map((fileName) => {
+      const filePath = path.join(directory, fileName);
+      return { filePath, modifiedAt: fs.statSync(filePath).mtimeMs };
+    })
+    .sort((a, b) => b.modifiedAt - a.modifiedAt);
+  return candidates[0]?.filePath || outputPath;
+}
+
 function runDownload(item) {
   activeDownloadID = item.id;
   const source = String(item.source || '').trim();
@@ -81,7 +101,9 @@ function runDownload(item) {
   updateDownload(item.id, { status: 'Downloading', progress: Math.max(1, Number(item.progress) || 0), error: '' });
 
   const args = ['--newline', '--no-playlist', ...qualityArgs(item.quality), '-o', outputPath, source];
-  const child = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(getYTDLPCommand(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  let lastError = '';
+  let spawnFailed = false;
 
   const handleOutput = (chunk) => {
     const text = String(chunk);
@@ -90,14 +112,25 @@ function runDownload(item) {
       updateDownload(item.id, { progress: Math.min(99, Number(match[1])) });
     }
   };
+  const handleErrorOutput = (chunk) => {
+    const text = String(chunk);
+    lastError = `${lastError}\n${text}`.trim().slice(-2000);
+    handleOutput(text);
+  };
 
   child.stdout.on('data', handleOutput);
-  child.stderr.on('data', handleOutput);
+  child.stderr.on('data', handleErrorOutput);
+  child.on('error', (error) => {
+    spawnFailed = true;
+    updateDownload(item.id, { status: 'Failed', error: String(error?.message || error) });
+    activeDownloadID = '';
+  });
   child.on('close', (code) => {
+    if (spawnFailed) return;
     if (code === 0) {
-      updateDownload(item.id, { status: 'Done', progress: 100, error: '' });
+      updateDownload(item.id, { status: 'Done', progress: 100, path: resolveFinalOutputPath(outputPath), error: '' });
     } else {
-      updateDownload(item.id, { status: 'Failed', error: `yt-dlp exited with code ${code}` });
+      updateDownload(item.id, { status: 'Failed', error: lastError || `yt-dlp exited with code ${code}` });
     }
     activeDownloadID = '';
   });
