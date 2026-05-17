@@ -495,19 +495,79 @@ function RSSFeedsView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFee
   );
 }
 
-function WatchlistChannelView({ feeds, onOpenAddFeed, onEditFeed, onDeleteFeed }) {
+function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
   const watchedFeeds = feeds.filter((feed) => feed.status === 'Watching');
+  const [selectedFeedID, setSelectedFeedID] = useState(watchedFeeds[0]?.id || '');
+  const selectedFeed = watchedFeeds.find((feed) => String(feed.id) === String(selectedFeedID)) || watchedFeeds[0] || null;
+
+  useEffect(() => {
+    if (!selectedFeed && watchedFeeds[0]) {
+      setSelectedFeedID(watchedFeeds[0].id);
+    }
+  }, [selectedFeed, watchedFeeds]);
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>Watchlist Channel</h2>
-        <button type="button" onClick={onOpenAddFeed}>
-          Add Channel
-        </button>
-      </div>
-      <FeedTable feeds={watchedFeeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
-    </section>
+    <div className="view-stack">
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Watchlist Channel</h2>
+          <button type="button" onClick={onOpenAddFeed}>
+            Add Channel
+          </button>
+        </div>
+        {watchedFeeds.length === 0 ? (
+          <p className="empty-line">No watched channel yet.</p>
+        ) : (
+          <div className="radio-grid">
+            {watchedFeeds.map((feed) => (
+              <label className="radio-card" key={feed.id}>
+                <input type="radio" name="watchlist-channel" checked={String(selectedFeed?.id) === String(feed.id)} onChange={() => setSelectedFeedID(feed.id)} />
+                <span>
+                  <strong>{feed.name}</strong>
+                  <small>{feed.rule}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </section>
+      {selectedFeed ? (
+        <section className="panel">
+          <div className="panel-head">
+            <h2>Channel URLs</h2>
+            <button type="button" onClick={() => onAddToDownload(selectedFeed)}>
+              Add to Download
+            </button>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Channel</th>
+                  <th>URL</th>
+                  <th>Rule</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{selectedFeed.name}</td>
+                  <td className="mono-cell">{selectedFeed.url}</td>
+                  <td>{selectedFeed.rule}</td>
+                  <td>{selectedFeed.status}</td>
+                  <td>
+                    <button type="button" onClick={() => onAddToDownload(selectedFeed)}>
+                      Add to Download
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+    </div>
   );
 }
 
@@ -810,6 +870,19 @@ export default function App() {
     saveDownloads(downloads.filter((item) => item.id !== downloadID));
   };
 
+  const addFeedToDownload = (feed) => {
+    const quality = String(feed.rule || '1080p mp4').includes('audio') ? 'mp3' : String(feed.rule || '1080p').split(' ')[0];
+    saveDownload({
+      id: `Q-${Date.now()}`,
+      title: feed.name,
+      source: feed.url,
+      quality,
+      status: 'Queued',
+      progress: 0
+    });
+    setActive('downloads');
+  };
+
   const saveFeeds = (nextFeeds) => {
     setFeeds(nextFeeds);
     saveJSON(feedsKey, nextFeeds);
@@ -919,7 +992,7 @@ export default function App() {
           />
         ) : null}
         {active === 'channel-watchlist' ? (
-          <WatchlistChannelView feeds={feeds} onOpenAddFeed={openAddFeed} onEditFeed={editFeed} onDeleteFeed={deleteFeed} />
+          <WatchlistChannelView feeds={feeds} onOpenAddFeed={openAddFeed} onAddToDownload={addFeedToDownload} />
         ) : null}
         {active === 'channel-list' ? (
           <ChannelListView

@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Changed Watchlist Channel into a channel URL picker feeding Downloads.
+- Files or subsystems touched: `src/App.jsx`, `src/styles.css`, and this implementation log.
+- Behavior/runtime effect: Watchlist Channel now shows a radio-card filter sourced from watched channels in List Channel; selecting a channel displays its URL table, and Add to Download creates a queued Downloads item from that channel URL.
+- Validation status: `timeout 120s npm run build` completed successfully; local and public HTTP checks on port `4177` returned `200 OK`.
+- Open follow-up items: Replace feed URL download items with parsed latest video URLs once RSS polling/backend parsing is implemented.
+
+## 2026-05-17
+
 - Scope: Added grouped Channel navigation.
 - Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
 - Behavior/runtime effect: The sidebar now includes a Channel parent menu with Watchlist Channel and List Channel children; Watchlist Channel shows only watched channels, while List Channel shows all channel feed rows with the same local edit/delete flow.

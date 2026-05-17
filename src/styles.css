@@ -342,6 +342,50 @@ th {
   gap: 14px;
 }
 
+.radio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.radio-card {
+  align-items: center;
+  border: 1px solid var(--border);
+  background: #101010;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.radio-card:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.radio-card input {
+  flex: 0 0 auto;
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--accent);
+}
+
+.radio-card span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.radio-card small {
+  color: var(--muted);
+}
+
+.empty-line {
+  border: 1px solid var(--border);
+  background: #101010;
+  color: var(--muted);
+  padding: 10px;
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -398,6 +442,7 @@ input[type="checkbox"] {
   .stats-grid,
   .role-grid,
   .form-grid,
+  .radio-grid,
   .settings-grid {
     grid-template-columns: 1fr;
   }
