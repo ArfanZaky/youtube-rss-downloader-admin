@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Added grouped Channel navigation.
+- Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
+- Behavior/runtime effect: The sidebar now includes a Channel parent menu with Watchlist Channel and List Channel children; Watchlist Channel shows only watched channels, while List Channel shows all channel feed rows with the same local edit/delete flow.
+- Validation status: `timeout 120s npm run build` completed successfully; local and public HTTP checks on port `4177` returned `200 OK`.
+- Open follow-up items: Connect channel list and watchlist state to backend channel/feed models.
+
+## 2026-05-17
+
 - Scope: Added frontend CRUD behavior for Downloads and RSS Feeds.
 - Files or subsystems touched: `src/App.jsx`, `src/styles.css`, `README.md`, and this implementation log.
 - Behavior/runtime effect: Downloads and RSS Feeds now support local create, edit, and delete actions from their menu pages and overview tables; both datasets persist in `localStorage` across refreshes.

@@ -7,6 +7,7 @@ Current scope:
 - Pixel-styled admin shell.
 - Login screen with demo credentials and refresh-safe local session.
 - Parent-child menu with Administrator containing Users, Roles, Permissions, and Settings.
+- Parent-child Channel menu containing Watchlist Channel and List Channel.
 - User, role, and permission management views.
 - RSS feed subscription table with local create, edit, and delete actions.
 - Download queue with local create, edit, and delete actions.

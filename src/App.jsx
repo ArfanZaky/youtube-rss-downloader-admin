@@ -49,6 +49,14 @@ const menuGroups = [
     ]
   },
   {
+    id: 'channel',
+    label: 'Channel',
+    children: [
+      ['channel-watchlist', 'Watchlist Channel'],
+      ['channel-list', 'List Channel']
+    ]
+  },
+  {
     id: 'administrator',
     label: 'Administrator',
     children: [
@@ -487,6 +495,39 @@ function RSSFeedsView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFee
   );
 }
 
+function WatchlistChannelView({ feeds, onOpenAddFeed, onEditFeed, onDeleteFeed }) {
+  const watchedFeeds = feeds.filter((feed) => feed.status === 'Watching');
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h2>Watchlist Channel</h2>
+        <button type="button" onClick={onOpenAddFeed}>
+          Add Channel
+        </button>
+      </div>
+      <FeedTable feeds={watchedFeeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
+    </section>
+  );
+}
+
+function ChannelListView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFeed, onSaveFeed, onEditFeed, onDeleteFeed }) {
+  return (
+    <div className="view-stack">
+      {showForm ? <FeedForm initialFeed={editingFeed} onSave={onSaveFeed} onCancel={onCancelFeed} /> : null}
+      <section className="panel">
+        <div className="panel-head">
+          <h2>List Channel</h2>
+          <button type="button" onClick={onOpenAddFeed}>
+            Add Channel
+          </button>
+        </div>
+        <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
+      </section>
+    </div>
+  );
+}
+
 function Users({ roles }) {
   return (
     <section className="panel">
@@ -775,13 +816,13 @@ export default function App() {
   };
 
   const openAddFeed = () => {
-    setActive('rss');
+    setActive('channel-list');
     setEditingFeed(null);
     setShowFeedForm(true);
   };
 
   const editFeed = (feed) => {
-    setActive('rss');
+    setActive('channel-list');
     setEditingFeed(feed);
     setShowFeedForm(true);
   };
@@ -864,6 +905,24 @@ export default function App() {
         ) : null}
         {active === 'rss' ? (
           <RSSFeedsView
+            feeds={feeds}
+            showForm={showFeedForm}
+            editingFeed={editingFeed}
+            onOpenAddFeed={openAddFeed}
+            onCancelFeed={() => {
+              setEditingFeed(null);
+              setShowFeedForm(false);
+            }}
+            onSaveFeed={saveFeed}
+            onEditFeed={editFeed}
+            onDeleteFeed={deleteFeed}
+          />
+        ) : null}
+        {active === 'channel-watchlist' ? (
+          <WatchlistChannelView feeds={feeds} onOpenAddFeed={openAddFeed} onEditFeed={editFeed} onDeleteFeed={deleteFeed} />
+        ) : null}
+        {active === 'channel-list' ? (
+          <ChannelListView
             feeds={feeds}
             showForm={showFeedForm}
             editingFeed={editingFeed}
