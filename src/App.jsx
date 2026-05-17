@@ -125,10 +125,26 @@ function normalizeChannelRows(rows) {
   });
 }
 
-function buildChannelURL(baseURL, typeID) {
-  const cleanURL = String(baseURL || '').replace(/\/+$/, '');
+function slugify(value) {
+  return String(value || 'channel').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 10) || 'channel';
+}
+
+function buildChannelVideoRows(feed, typeID) {
   const type = channelURLTypes.find((item) => item.id === typeID) || channelURLTypes[0];
-  return `${cleanURL}/${type.path}`;
+  const slug = slugify(feed?.name);
+  const prefix = type.id === 'shorts' ? 'shorts' : 'watch';
+  const rows = type.id === 'live' ? [1] : [1, 2, 3];
+
+  return rows.map((index) => {
+    const videoID = `${slug}${type.id}${index}`;
+    const url = prefix === 'shorts' ? `https://www.youtube.com/shorts/${videoID}` : `https://www.youtube.com/watch?v=${videoID}`;
+    return {
+      id: `${feed?.id || 'channel'}-${type.id}-${index}`,
+      title: `${feed?.name || 'Channel'} ${type.label} ${index}`,
+      url,
+      type
+    };
+  });
 }
 
 function PixelMark() {
@@ -522,7 +538,7 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
   const [selectedURLType, setSelectedURLType] = useState('videos');
   const selectedFeed = watchedFeeds.find((feed) => String(feed.id) === String(selectedFeedID)) || watchedFeeds[0] || null;
   const selectedType = channelURLTypes.find((type) => type.id === selectedURLType) || channelURLTypes[0];
-  const selectedURL = selectedFeed ? buildChannelURL(selectedFeed.url, selectedType.id) : '';
+  const selectedVideoRows = selectedFeed ? buildChannelVideoRows(selectedFeed, selectedType.id) : [];
 
   useEffect(() => {
     if (!selectedFeed && watchedFeeds[0]) {
@@ -559,9 +575,7 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
         <section className="panel">
           <div className="panel-head">
             <h2>Channel URLs</h2>
-            <button type="button" onClick={() => onAddToDownload(selectedFeed, selectedURL, selectedType)}>
-              Add to Download
-            </button>
+            <span className="panel-note">{selectedVideoRows.length} URLs</span>
           </div>
           <div className="radio-grid compact-radio-grid">
             {channelURLTypes.map((type) => (
@@ -580,25 +594,27 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
                 <tr>
                   <th>Channel</th>
                   <th>Type</th>
+                  <th>Title</th>
                   <th>URL</th>
                   <th>Rule</th>
-                  <th>Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>{selectedFeed.name}</td>
-                  <td>{selectedType.label}</td>
-                  <td className="mono-cell">{selectedURL}</td>
-                  <td>{selectedFeed.rule}</td>
-                  <td>{selectedFeed.status}</td>
-                  <td>
-                    <button type="button" onClick={() => onAddToDownload(selectedFeed, selectedURL, selectedType)}>
-                      Add to Download
-                    </button>
-                  </td>
-                </tr>
+                {selectedVideoRows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{selectedFeed.name}</td>
+                    <td>{row.type.label}</td>
+                    <td>{row.title}</td>
+                    <td className="mono-cell">{row.url}</td>
+                    <td>{selectedFeed.rule}</td>
+                    <td>
+                      <button type="button" onClick={() => onAddToDownload(selectedFeed, row.url, row.type, row.title)}>
+                        Add to Download
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -907,11 +923,11 @@ export default function App() {
     saveDownloads(downloads.filter((item) => item.id !== downloadID));
   };
 
-  const addFeedToDownload = (feed, sourceURL = feed.url, type = channelURLTypes[0]) => {
+  const addFeedToDownload = (feed, sourceURL = feed.url, type = channelURLTypes[0], title = '') => {
     const quality = String(feed.rule || '1080p mp4').includes('audio') ? 'mp3' : String(feed.rule || '1080p').split(' ')[0];
     saveDownload({
       id: `Q-${Date.now()}`,
-      title: `${feed.name} - ${type.label}`,
+      title: title || `${feed.name} - ${type.label}`,
       source: sourceURL,
       quality,
       status: 'Queued',
