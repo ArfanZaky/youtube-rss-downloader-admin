@@ -2,6 +2,14 @@
 
 ## 2026-05-17
 
+- Scope: Split RSS Feed data from Channel List data.
+- Files or subsystems touched: `src/App.jsx`, `README.md`, and this implementation log.
+- Behavior/runtime effect: RSS Feeds now stores and edits RSS feed URLs under a dedicated `rss-feeds` localStorage key; Channel List and Watchlist Channel now store and edit channel URLs under a separate `channels` key. Legacy mixed rows are split by URL type during first load.
+- Validation status: `timeout 120s npm run build` completed successfully; local channel URL API still returned real Sleepybloke rows; public page check returned `200 OK`.
+- Open follow-up items: Persist both datasets in separate backend tables/models.
+
+## 2026-05-17
+
 - Scope: Corrected Watchlist Channel type-specific URL loading.
 - Files or subsystems touched: `vite.config.js`, `src/App.jsx`, and this implementation log.
 - Behavior/runtime effect: Channel URL lookups now request the actual YouTube tab paths for each type (`/videos`, `/shorts`, `/streams`) instead of using RSS for Videos first; switching filters clears stale rows and fetches by selected type ID.

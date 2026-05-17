@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 const sessionKey = 'yt-rss-admin.session.v1';
 const settingsKey = 'yt-rss-admin.settings.v1';
-const feedsKey = 'yt-rss-admin.feeds.v1';
+const legacyFeedsKey = 'yt-rss-admin.feeds.v1';
+const rssFeedsKey = 'yt-rss-admin.rss-feeds.v1';
+const channelsKey = 'yt-rss-admin.channels.v1';
 const downloadsKey = 'yt-rss-admin.downloads.v1';
 
 const permissions = [
@@ -26,8 +28,13 @@ const initialUsers = [
   { id: 3, username: 'viewer', name: 'Read Only', role: 'viewer', status: 'Invited', lastLogin: '-' }
 ];
 
-const initialFeeds = [
-  { id: 1, name: 'Tech Reviews', url: 'https://www.youtube.com/@techreviews', rule: '1080p mp4', status: 'Watching', lastCheck: '2 min ago' },
+const initialRSSFeeds = [
+  { id: 1, name: 'Sleepybloke RSS', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCk-lkg3YUJFOCreDf5C998w', rule: '1080p mp4', status: 'Watching', lastCheck: 'Not checked yet' },
+  { id: 2, name: 'Podcast Clips RSS', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC-podcast', rule: 'audio mp3', status: 'Paused', lastCheck: 'Not checked yet' }
+];
+
+const initialChannels = [
+  { id: 1, name: 'Sleepybloke', url: 'https://www.youtube.com/@Sleepybloke', rule: '1080p mp4', status: 'Watching', lastCheck: '2 min ago' },
   { id: 2, name: 'Podcast Clips', url: 'https://www.youtube.com/@podcastclips', rule: 'audio mp3', status: 'Paused', lastCheck: '1 hour ago' },
   { id: 3, name: 'Tutorial Archive', url: 'https://www.youtube.com/@tutorialarchive', rule: '720p mp4', status: 'Watching', lastCheck: '9 min ago' }
 ];
@@ -116,6 +123,15 @@ function loadArray(key, fallback) {
   }
 }
 
+function hasStoredValue(key) {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(key) !== null;
+}
+
+function isRSSFeedURL(row) {
+  return String(row?.url || '').includes('/feeds/videos.xml');
+}
+
 function normalizeChannelRows(rows) {
   return rows.map((row) => {
     const url = String(row.url || '');
@@ -123,6 +139,18 @@ function normalizeChannelRows(rows) {
     if (!channelID) return row;
     return { ...row, url: `https://www.youtube.com/channel/${channelID}` };
   });
+}
+
+function loadRSSFeeds() {
+  if (hasStoredValue(rssFeedsKey)) return loadArray(rssFeedsKey, initialRSSFeeds);
+  const legacyRSSRows = loadArray(legacyFeedsKey, []).filter(isRSSFeedURL);
+  return legacyRSSRows.length > 0 ? legacyRSSRows : initialRSSFeeds;
+}
+
+function loadChannels() {
+  if (hasStoredValue(channelsKey)) return normalizeChannelRows(loadArray(channelsKey, initialChannels));
+  const legacyChannelRows = loadArray(legacyFeedsKey, []).filter((row) => !isRSSFeedURL(row));
+  return legacyChannelRows.length > 0 ? normalizeChannelRows(legacyChannelRows) : initialChannels;
 }
 
 function PixelMark() {
@@ -243,14 +271,14 @@ function QueueTable({ downloads, onEdit, onDelete }) {
   );
 }
 
-function FeedTable({ feeds, onEdit, onDelete }) {
+function FeedTable({ feeds, onEdit, onDelete, urlLabel = 'Channel URL' }) {
   return (
     <div className="table-wrap">
       <table>
         <thead>
           <tr>
             <th>Name</th>
-            <th>Channel URL</th>
+            <th>{urlLabel}</th>
             <th>Rule</th>
             <th>Status</th>
             <th>Last Check</th>
@@ -366,7 +394,7 @@ function DownloadForm({ initialDownload, onSave, onCancel }) {
   );
 }
 
-function FeedForm({ initialFeed, onSave, onCancel }) {
+function FeedForm({ initialFeed, onSave, onCancel, title = 'Channel', urlLabel = 'Channel URL', urlPlaceholder = 'https://www.youtube.com/@Sleepybloke' }) {
   const [draft, setDraft] = useState({
     name: initialFeed?.name || '',
     url: initialFeed?.url || '',
@@ -385,11 +413,11 @@ function FeedForm({ initialFeed, onSave, onCancel }) {
     const name = draft.name.trim();
     const url = draft.url.trim();
     if (!name || !url) {
-      setError('Name dan Channel URL wajib diisi.');
+      setError(`Name dan ${urlLabel} wajib diisi.`);
       return;
     }
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      setError('Channel URL harus dimulai dengan http:// atau https://.');
+      setError(`${urlLabel} harus dimulai dengan http:// atau https://.`);
       return;
     }
     onSave({
@@ -405,7 +433,7 @@ function FeedForm({ initialFeed, onSave, onCancel }) {
   return (
     <form className="panel form-panel" onSubmit={submit}>
       <div className="panel-head">
-        <h2>{initialFeed ? 'Edit RSS Feed' : 'Add RSS Feed'}</h2>
+        <h2>{initialFeed ? `Edit ${title}` : `Add ${title}`}</h2>
         <div className="button-row">
           <button type="button" onClick={onCancel}>
             Cancel
@@ -420,8 +448,8 @@ function FeedForm({ initialFeed, onSave, onCancel }) {
           <input value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="Channel or playlist name" />
         </label>
         <label>
-          Channel URL
-          <input value={draft.url} onChange={(event) => update('url', event.target.value)} placeholder="https://www.youtube.com/@Sleepybloke" />
+          {urlLabel}
+          <input value={draft.url} onChange={(event) => update('url', event.target.value)} placeholder={urlPlaceholder} />
         </label>
         <label>
           Rule
@@ -444,8 +472,8 @@ function FeedForm({ initialFeed, onSave, onCancel }) {
   );
 }
 
-function Overview({ downloads, feeds, onOpenAddDownload, onEditDownload, onDeleteDownload, onOpenAddFeed, onEditFeed, onDeleteFeed }) {
-  const activeFeedCount = feeds.filter((feed) => feed.status === 'Watching').length;
+function Overview({ downloads, rssFeeds, onOpenAddDownload, onEditDownload, onDeleteDownload, onOpenAddRSSFeed, onEditRSSFeed, onDeleteRSSFeed }) {
+  const activeFeedCount = rssFeeds.filter((feed) => feed.status === 'Watching').length;
   return (
     <div className="view-stack">
       <div className="stats-grid">
@@ -466,11 +494,11 @@ function Overview({ downloads, feeds, onOpenAddDownload, onEditDownload, onDelet
       <section className="panel">
         <div className="panel-head">
           <h2>RSS Watchlist</h2>
-          <button type="button" onClick={onOpenAddFeed}>
+          <button type="button" onClick={onOpenAddRSSFeed}>
             Add Feed
           </button>
         </div>
-        <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
+        <FeedTable feeds={rssFeeds} onEdit={onEditRSSFeed} onDelete={onDeleteRSSFeed} urlLabel="RSS Feed URL" />
       </section>
     </div>
   );
@@ -496,7 +524,16 @@ function DownloadsView({ downloads, showForm, editingDownload, onOpenAdd, onCanc
 function RSSFeedsView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFeed, onSaveFeed, onEditFeed, onDeleteFeed }) {
   return (
     <div className="view-stack">
-      {showForm ? <FeedForm initialFeed={editingFeed} onSave={onSaveFeed} onCancel={onCancelFeed} /> : null}
+      {showForm ? (
+        <FeedForm
+          title="RSS Feed"
+          urlLabel="RSS Feed URL"
+          urlPlaceholder="https://www.youtube.com/feeds/videos.xml?channel_id=..."
+          initialFeed={editingFeed}
+          onSave={onSaveFeed}
+          onCancel={onCancelFeed}
+        />
+      ) : null}
       <section className="panel">
         <div className="panel-head">
           <h2>RSS Feeds</h2>
@@ -504,7 +541,7 @@ function RSSFeedsView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFee
             Add Feed
           </button>
         </div>
-        <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
+        <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} urlLabel="RSS Feed URL" />
       </section>
     </div>
   );
@@ -643,7 +680,16 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
 function ChannelListView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFeed, onSaveFeed, onEditFeed, onDeleteFeed }) {
   return (
     <div className="view-stack">
-      {showForm ? <FeedForm initialFeed={editingFeed} onSave={onSaveFeed} onCancel={onCancelFeed} /> : null}
+      {showForm ? (
+        <FeedForm
+          title="Channel"
+          urlLabel="Channel URL"
+          urlPlaceholder="https://www.youtube.com/@Sleepybloke"
+          initialFeed={editingFeed}
+          onSave={onSaveFeed}
+          onCancel={onCancelFeed}
+        />
+      ) : null}
       <section className="panel">
         <div className="panel-head">
           <h2>List Channel</h2>
@@ -902,11 +948,14 @@ export default function App() {
   const [roles, setRoles] = useState(initialRoles);
   const [settings, setSettings] = useState(() => loadJSON(settingsKey, defaultSettings));
   const [downloads, setDownloads] = useState(() => loadArray(downloadsKey, initialDownloads));
-  const [feeds, setFeeds] = useState(() => normalizeChannelRows(loadArray(feedsKey, initialFeeds)));
+  const [rssFeeds, setRSSFeeds] = useState(loadRSSFeeds);
+  const [channels, setChannels] = useState(loadChannels);
   const [showDownloadForm, setShowDownloadForm] = useState(false);
   const [editingDownload, setEditingDownload] = useState(null);
-  const [showFeedForm, setShowFeedForm] = useState(false);
-  const [editingFeed, setEditingFeed] = useState(null);
+  const [showRSSFeedForm, setShowRSSFeedForm] = useState(false);
+  const [editingRSSFeed, setEditingRSSFeed] = useState(null);
+  const [showChannelForm, setShowChannelForm] = useState(false);
+  const [editingChannel, setEditingChannel] = useState(null);
 
   const activeTitle = useMemo(() => flatMenu.find(([id]) => id === active)?.[1] || 'Overview', [active]);
 
@@ -952,33 +1001,62 @@ export default function App() {
     setActive('downloads');
   };
 
-  const saveFeeds = (nextFeeds) => {
-    setFeeds(nextFeeds);
-    saveJSON(feedsKey, nextFeeds);
+  const saveRSSFeeds = (nextFeeds) => {
+    setRSSFeeds(nextFeeds);
+    saveJSON(rssFeedsKey, nextFeeds);
   };
 
-  const openAddFeed = () => {
+  const openAddRSSFeed = () => {
+    setActive('rss');
+    setEditingRSSFeed(null);
+    setShowRSSFeedForm(true);
+  };
+
+  const editRSSFeed = (feed) => {
+    setActive('rss');
+    setEditingRSSFeed(feed);
+    setShowRSSFeedForm(true);
+  };
+
+  const saveRSSFeed = (feed) => {
+    const exists = rssFeeds.some((item) => item.id === feed.id);
+    const nextFeeds = exists ? rssFeeds.map((item) => (item.id === feed.id ? feed : item)) : [feed, ...rssFeeds];
+    saveRSSFeeds(nextFeeds);
+    setEditingRSSFeed(null);
+    setShowRSSFeedForm(false);
+  };
+
+  const deleteRSSFeed = (feedID) => {
+    saveRSSFeeds(rssFeeds.filter((feed) => feed.id !== feedID));
+  };
+
+  const saveChannels = (nextChannels) => {
+    setChannels(nextChannels);
+    saveJSON(channelsKey, nextChannels);
+  };
+
+  const openAddChannel = () => {
     setActive('channel-list');
-    setEditingFeed(null);
-    setShowFeedForm(true);
+    setEditingChannel(null);
+    setShowChannelForm(true);
   };
 
-  const editFeed = (feed) => {
+  const editChannel = (feed) => {
     setActive('channel-list');
-    setEditingFeed(feed);
-    setShowFeedForm(true);
+    setEditingChannel(feed);
+    setShowChannelForm(true);
   };
 
-  const saveFeed = (feed) => {
-    const exists = feeds.some((item) => item.id === feed.id);
-    const nextFeeds = exists ? feeds.map((item) => (item.id === feed.id ? feed : item)) : [feed, ...feeds];
-    saveFeeds(nextFeeds);
-    setEditingFeed(null);
-    setShowFeedForm(false);
+  const saveChannel = (feed) => {
+    const exists = channels.some((item) => item.id === feed.id);
+    const nextChannels = exists ? channels.map((item) => (item.id === feed.id ? feed : item)) : [feed, ...channels];
+    saveChannels(nextChannels);
+    setEditingChannel(null);
+    setShowChannelForm(false);
   };
 
-  const deleteFeed = (feedID) => {
-    saveFeeds(feeds.filter((feed) => feed.id !== feedID));
+  const deleteChannel = (feedID) => {
+    saveChannels(channels.filter((feed) => feed.id !== feedID));
   };
 
   if (!sessionUser) {
@@ -1021,13 +1099,13 @@ export default function App() {
         {active === 'overview' ? (
           <Overview
             downloads={downloads}
-            feeds={feeds}
+            rssFeeds={rssFeeds}
             onOpenAddDownload={openAddDownload}
             onEditDownload={editDownload}
             onDeleteDownload={deleteDownload}
-            onOpenAddFeed={openAddFeed}
-            onEditFeed={editFeed}
-            onDeleteFeed={deleteFeed}
+            onOpenAddRSSFeed={openAddRSSFeed}
+            onEditRSSFeed={editRSSFeed}
+            onDeleteRSSFeed={deleteRSSFeed}
           />
         ) : null}
         {active === 'downloads' ? (
@@ -1047,35 +1125,35 @@ export default function App() {
         ) : null}
         {active === 'rss' ? (
           <RSSFeedsView
-            feeds={feeds}
-            showForm={showFeedForm}
-            editingFeed={editingFeed}
-            onOpenAddFeed={openAddFeed}
+            feeds={rssFeeds}
+            showForm={showRSSFeedForm}
+            editingFeed={editingRSSFeed}
+            onOpenAddFeed={openAddRSSFeed}
             onCancelFeed={() => {
-              setEditingFeed(null);
-              setShowFeedForm(false);
+              setEditingRSSFeed(null);
+              setShowRSSFeedForm(false);
             }}
-            onSaveFeed={saveFeed}
-            onEditFeed={editFeed}
-            onDeleteFeed={deleteFeed}
+            onSaveFeed={saveRSSFeed}
+            onEditFeed={editRSSFeed}
+            onDeleteFeed={deleteRSSFeed}
           />
         ) : null}
         {active === 'channel-watchlist' ? (
-          <WatchlistChannelView feeds={feeds} onOpenAddFeed={openAddFeed} onAddToDownload={addFeedToDownload} />
+          <WatchlistChannelView feeds={channels} onOpenAddFeed={openAddChannel} onAddToDownload={addFeedToDownload} />
         ) : null}
         {active === 'channel-list' ? (
           <ChannelListView
-            feeds={feeds}
-            showForm={showFeedForm}
-            editingFeed={editingFeed}
-            onOpenAddFeed={openAddFeed}
+            feeds={channels}
+            showForm={showChannelForm}
+            editingFeed={editingChannel}
+            onOpenAddFeed={openAddChannel}
             onCancelFeed={() => {
-              setEditingFeed(null);
-              setShowFeedForm(false);
+              setEditingChannel(null);
+              setShowChannelForm(false);
             }}
-            onSaveFeed={saveFeed}
-            onEditFeed={editFeed}
-            onDeleteFeed={deleteFeed}
+            onSaveFeed={saveChannel}
+            onEditFeed={editChannel}
+            onDeleteFeed={deleteChannel}
           />
         ) : null}
         {active === 'users' ? <Users roles={roles} /> : null}
