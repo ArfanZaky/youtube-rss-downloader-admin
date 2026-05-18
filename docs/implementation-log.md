@@ -2,6 +2,14 @@
 
 ## 2026-05-18
 
+- Scope: Added application icons to the admin interface.
+- Files or subsystems touched: `src/App.jsx`, `src/styles.css`, `index.html`, `public/favicon.svg`, `package.json`, `package-lock.json`, `CHANGELOG.md`, and this implementation log.
+- Behavior/runtime effect: Sidebar navigation, primary actions, table actions, login/logout, stats, and the browser tab now show consistent pixel-friendly icons using `lucide-react` plus a small SVG favicon.
+- Validation status: `timeout 120s npm run build` completed successfully; Vite dev server restarted on port `4177`; public page and `/favicon.svg` checks returned `200 OK`.
+- Open follow-up items: Add icon-only compact actions for dense mobile tables if the table layout is tightened further.
+
+## 2026-05-18
+
 - Scope: Allowed the configured public downloader domain in Vite.
 - Files or subsystems touched: `vite.config.js`, `CHANGELOG.md`, and this implementation log.
 - Behavior/runtime effect: The Vite dev server now accepts requests whose Host header is `youtubedl.cloudverra.com`, resolving the blocked-host error for the public domain.

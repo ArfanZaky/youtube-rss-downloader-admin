@@ -37,12 +37,16 @@ textarea {
 }
 
 button {
+  align-items: center;
   min-height: 38px;
   border: 1px solid var(--border);
   border-radius: 0;
   background: var(--surface-2);
   color: var(--text);
   cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
   padding: 8px 12px;
 }
 
@@ -116,6 +120,10 @@ h3 {
   gap: 12px;
 }
 
+.ui-icon {
+  flex: 0 0 auto;
+}
+
 .brand-row p,
 .topbar p,
 .role-card p {
@@ -178,6 +186,7 @@ h3 {
 }
 
 .sidebar nav button {
+  justify-content: flex-start;
   width: 100%;
   padding-left: 20px;
   text-align: left;
@@ -224,8 +233,15 @@ h3 {
   padding: 14px;
 }
 
-.stat span {
+.stat span,
+.stat-label {
   color: var(--muted);
+}
+
+.stat-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
 }
 
 .stat strong {

@@ -1,4 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  Activity,
+  Download,
+  Eye,
+  FolderDown,
+  Gauge,
+  KeyRound,
+  ListVideo,
+  LogIn,
+  LogOut,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Rss,
+  Save,
+  Settings as SettingsIcon,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+  UsersRound,
+  X
+} from 'lucide-react';
 
 const sessionKey = 'yt-rss-admin.session.v1';
 const settingsKey = 'yt-rss-admin.settings.v1';
@@ -56,27 +78,27 @@ const menuGroups = [
     id: 'main',
     label: 'Main',
     children: [
-      ['overview', 'Overview'],
-      ['downloads', 'Downloads'],
-      ['rss', 'RSS Feeds']
+      ['overview', 'Overview', Gauge],
+      ['downloads', 'Downloads', Download],
+      ['rss', 'RSS Feeds', Rss]
     ]
   },
   {
     id: 'channel',
     label: 'Channel',
     children: [
-      ['channel-watchlist', 'Watchlist Channel'],
-      ['channel-list', 'List Channel']
+      ['channel-watchlist', 'Watchlist Channel', Eye],
+      ['channel-list', 'List Channel', ListVideo]
     ]
   },
   {
     id: 'administrator',
     label: 'Administrator',
     children: [
-      ['users', 'Users'],
-      ['roles', 'Roles'],
-      ['permissions', 'Permissions'],
-      ['settings', 'Settings']
+      ['users', 'Users', UsersRound],
+      ['roles', 'Roles', ShieldCheck],
+      ['permissions', 'Permissions', KeyRound],
+      ['settings', 'Settings', SettingsIcon]
     ]
   }
 ];
@@ -204,6 +226,15 @@ function PixelMark() {
   );
 }
 
+function IconLabel({ icon: IconComponent, children }) {
+  return (
+    <>
+      <IconComponent className="ui-icon" size={16} strokeWidth={2} aria-hidden="true" />
+      <span>{children}</span>
+    </>
+  );
+}
+
 function Login({ onLogin }) {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
@@ -238,17 +269,21 @@ function Login({ onLogin }) {
             <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" />
           </label>
           {error ? <p className="error-line">{error}</p> : null}
-          <button type="submit">Login</button>
+          <button type="submit">
+            <IconLabel icon={LogIn}>Login</IconLabel>
+          </button>
         </form>
       </section>
     </main>
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, icon }) {
   return (
     <div className="stat">
-      <span>{label}</span>
+      <span className="stat-label">
+        <IconLabel icon={icon}>{label}</IconLabel>
+      </span>
       <strong>{value}</strong>
     </div>
   );
@@ -295,10 +330,10 @@ function QueueTable({ downloads, onEdit, onDelete }) {
               <td>
                 <div className="table-actions">
                   <button type="button" onClick={() => onEdit(item)}>
-                    Edit
+                    <IconLabel icon={Pencil}>Edit</IconLabel>
                   </button>
                   <button type="button" onClick={() => onDelete(item.id)}>
-                    Delete
+                    <IconLabel icon={Trash2}>Delete</IconLabel>
                   </button>
                 </div>
               </td>
@@ -335,10 +370,10 @@ function FeedTable({ feeds, onEdit, onDelete, urlLabel = 'Channel URL' }) {
               <td>
                 <div className="table-actions">
                   <button type="button" onClick={() => onEdit(feed)}>
-                    Edit
+                    <IconLabel icon={Pencil}>Edit</IconLabel>
                   </button>
                   <button type="button" onClick={() => onDelete(feed.id)}>
-                    Delete
+                    <IconLabel icon={Trash2}>Delete</IconLabel>
                   </button>
                 </div>
               </td>
@@ -387,9 +422,11 @@ function DownloadForm({ initialDownload, onSave, onCancel }) {
         <h2>{initialDownload ? 'Edit Download' : 'Add Download'}</h2>
         <div className="button-row">
           <button type="button" onClick={onCancel}>
-            Cancel
+            <IconLabel icon={X}>Cancel</IconLabel>
           </button>
-          <button type="submit">Save</button>
+          <button type="submit">
+            <IconLabel icon={Save}>Save</IconLabel>
+          </button>
         </div>
       </div>
       {error ? <p className="error-line">{error}</p> : null}
@@ -458,9 +495,11 @@ function FeedForm({ initialFeed, onSave, onCancel, title = 'Channel', urlLabel =
         <h2>{initialFeed ? `Edit ${title}` : `Add ${title}`}</h2>
         <div className="button-row">
           <button type="button" onClick={onCancel}>
-            Cancel
+            <IconLabel icon={X}>Cancel</IconLabel>
           </button>
-          <button type="submit">Save</button>
+          <button type="submit">
+            <IconLabel icon={Save}>Save</IconLabel>
+          </button>
         </div>
       </div>
       {error ? <p className="error-line">{error}</p> : null}
@@ -499,16 +538,16 @@ function Overview({ downloads, rssFeeds, onOpenAddDownload, onEditDownload, onDe
   return (
     <div className="view-stack">
       <div className="stats-grid">
-        <Stat label="Active feeds" value={String(activeFeedCount)} />
-        <Stat label="Queue items" value={String(downloads.length)} />
-        <Stat label="Storage used" value="284 GB" />
-        <Stat label="Worker state" value="Online" />
+        <Stat label="Active feeds" value={String(activeFeedCount)} icon={Rss} />
+        <Stat label="Queue items" value={String(downloads.length)} icon={Download} />
+        <Stat label="Storage used" value="284 GB" icon={FolderDown} />
+        <Stat label="Worker state" value="Online" icon={Activity} />
       </div>
       <section className="panel">
         <div className="panel-head">
           <h2>Download Queue</h2>
           <button type="button" onClick={onOpenAddDownload}>
-            Add URL
+            <IconLabel icon={Plus}>Add URL</IconLabel>
           </button>
         </div>
         <QueueTable downloads={downloads} onEdit={onEditDownload} onDelete={onDeleteDownload} />
@@ -517,7 +556,7 @@ function Overview({ downloads, rssFeeds, onOpenAddDownload, onEditDownload, onDe
         <div className="panel-head">
           <h2>RSS Watchlist</h2>
           <button type="button" onClick={onOpenAddRSSFeed}>
-            Add Feed
+            <IconLabel icon={Plus}>Add Feed</IconLabel>
           </button>
         </div>
         <FeedTable feeds={rssFeeds} onEdit={onEditRSSFeed} onDelete={onDeleteRSSFeed} urlLabel="RSS Feed URL" />
@@ -534,7 +573,7 @@ function DownloadsView({ downloads, showForm, editingDownload, onOpenAdd, onCanc
         <div className="panel-head">
           <h2>Downloads</h2>
           <button type="button" onClick={onOpenAdd}>
-            Add URL
+            <IconLabel icon={Plus}>Add URL</IconLabel>
           </button>
         </div>
         <QueueTable downloads={downloads} onEdit={onEdit} onDelete={onDelete} />
@@ -560,7 +599,7 @@ function RSSFeedsView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancelFee
         <div className="panel-head">
           <h2>RSS Feeds</h2>
           <button type="button" onClick={onOpenAddFeed}>
-            Add Feed
+            <IconLabel icon={Plus}>Add Feed</IconLabel>
           </button>
         </div>
         <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} urlLabel="RSS Feed URL" />
@@ -617,7 +656,7 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
         <div className="panel-head">
           <h2>Watchlist Channel</h2>
           <button type="button" onClick={onOpenAddFeed}>
-            Add Channel
+            <IconLabel icon={Plus}>Add Channel</IconLabel>
           </button>
         </div>
         {watchedFeeds.length === 0 ? (
@@ -685,7 +724,7 @@ function WatchlistChannelView({ feeds, onOpenAddFeed, onAddToDownload }) {
                     <td>{selectedFeed.rule}</td>
                     <td>
                       <button type="button" onClick={() => onAddToDownload(selectedFeed, row.url, selectedType, row.title)}>
-                        Add to Download
+                        <IconLabel icon={Download}>Add to Download</IconLabel>
                       </button>
                     </td>
                   </tr>
@@ -716,7 +755,7 @@ function ChannelListView({ feeds, showForm, editingFeed, onOpenAddFeed, onCancel
         <div className="panel-head">
           <h2>List Channel</h2>
           <button type="button" onClick={onOpenAddFeed}>
-            Add Channel
+            <IconLabel icon={Plus}>Add Channel</IconLabel>
           </button>
         </div>
         <FeedTable feeds={feeds} onEdit={onEditFeed} onDelete={onDeleteFeed} />
@@ -730,7 +769,9 @@ function Users({ roles }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Users</h2>
-        <button type="button">Invite User</button>
+        <button type="button">
+          <IconLabel icon={UserPlus}>Invite User</IconLabel>
+        </button>
       </div>
       <div className="table-wrap">
         <table>
@@ -765,7 +806,9 @@ function Roles({ roles }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Roles</h2>
-        <button type="button">Create Role</button>
+        <button type="button">
+          <IconLabel icon={Plus}>Create Role</IconLabel>
+        </button>
       </div>
       <div className="role-grid">
         {roles.map((role) => (
@@ -802,7 +845,9 @@ function PermissionMatrix({ roles, setRoles }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Permissions</h2>
-        <button type="button">Save Matrix</button>
+        <button type="button">
+          <IconLabel icon={Save}>Save Matrix</IconLabel>
+        </button>
       </div>
       <div className="table-wrap">
         <table>
@@ -878,9 +923,11 @@ function Settings({ settings, setSettings, onPersistSettings }) {
         <h2>Settings</h2>
         <div className="button-row">
           <button type="button" onClick={reset}>
-            Reset
+            <IconLabel icon={RotateCcw}>Reset</IconLabel>
           </button>
-          <button type="submit">Save</button>
+          <button type="submit">
+            <IconLabel icon={Save}>Save</IconLabel>
+          </button>
         </div>
       </div>
       {notice ? <p className="notice-line">{notice}</p> : null}
@@ -1148,9 +1195,9 @@ export default function App() {
           {menuGroups.map((group) => (
             <div className="nav-group" key={group.id}>
               <p>{group.label}</p>
-              {group.children.map(([id, label]) => (
+              {group.children.map(([id, label, IconComponent]) => (
                 <button key={id} type="button" className={active === id ? 'active' : ''} onClick={() => setActive(id)}>
-                  {label}
+                  <IconLabel icon={IconComponent}>{label}</IconLabel>
                 </button>
               ))}
             </div>
@@ -1164,7 +1211,7 @@ export default function App() {
             <p>Role: Owner - Permission: Full access</p>
           </div>
           <button type="button" onClick={logout}>
-            Logout
+            <IconLabel icon={LogOut}>Logout</IconLabel>
           </button>
         </header>
         {active === 'overview' ? (
