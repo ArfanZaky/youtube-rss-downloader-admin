@@ -2,6 +2,14 @@
 
 ## 2026-05-18
 
+- Scope: Fixed Channel URLs titles.
+- Files or subsystems touched: `vite.config.js`, `CHANGELOG.md`, and this implementation log.
+- Behavior/runtime effect: `/api/channel-urls` now uses `yt-dlp --flat-playlist` as the primary source for Videos, Shorts, and Live/Streams rows, so Watchlist Channel shows real YouTube titles instead of raw video IDs; the old HTML/RSS parsers remain as fallback.
+- Validation status: `timeout 120s npm run build` completed successfully; Vite dev server restarted on port `4177`; local API checks for Sleepybloke Videos, Shorts, and Live returned real titles instead of video IDs.
+- Open follow-up items: Add caching for channel URL lookups to avoid repeated YouTube/yt-dlp calls when switching filters quickly.
+
+## 2026-05-18
+
 - Scope: Added application icons to the admin interface.
 - Files or subsystems touched: `src/App.jsx`, `src/styles.css`, `index.html`, `public/favicon.svg`, `package.json`, `package-lock.json`, `CHANGELOG.md`, and this implementation log.
 - Behavior/runtime effect: Sidebar navigation, primary actions, table actions, login/logout, stats, and the browser tab now show consistent pixel-friendly icons using `lucide-react` plus a small SVG favicon.

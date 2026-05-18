@@ -72,6 +72,37 @@ function getYTDLPCommand() {
   return fs.existsSync(localYTDLPPath) ? localYTDLPPath : 'yt-dlp';
 }
 
+function runYTDLPJSON(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(getYTDLPCommand(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk);
+      if (stdout.length > 15_000_000) {
+        child.kill('SIGTERM');
+        reject(new Error('yt-dlp response is too large.'));
+      }
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr = `${stderr}\n${String(chunk)}`.trim().slice(-2000);
+    });
+    child.on('error', (error) => reject(error));
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(stderr || `yt-dlp exited with code ${code}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch {
+        reject(new Error('yt-dlp returned invalid JSON.'));
+      }
+    });
+  });
+}
+
 function resolveFinalOutputPath(outputPath) {
   if (fs.existsSync(outputPath)) return outputPath;
   const directory = path.dirname(outputPath);
@@ -273,6 +304,22 @@ async function fetchTabRows(channelURL, type) {
   }));
 }
 
+async function fetchYTDLPTabRows(channelURL, type) {
+  const baseURL = channelURL.replace(/\/+$/, '');
+  const tabPath = type === 'shorts' ? 'shorts' : type === 'live' ? 'streams' : 'videos';
+  const payload = await runYTDLPJSON(['--flat-playlist', '--dump-single-json', '--playlist-end', '20', `${baseURL}/${tabPath}`]);
+  const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+  return entries.map((entry) => {
+    const id = entry.id || String(entry.url || '').match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/)?.[1];
+    if (!id) return null;
+    return {
+      id,
+      title: entry.title || id,
+      url: type === 'shorts' ? `https://www.youtube.com/shorts/${id}` : entry.url?.startsWith('http') ? entry.url : `https://www.youtube.com/watch?v=${id}`
+    };
+  }).filter(Boolean);
+}
+
 async function handleChannelURLs(req, res) {
   try {
     const requestURL = new URL(req.url, 'http://localhost');
@@ -282,7 +329,15 @@ async function handleChannelURLs(req, res) {
       sendJSON(res, 400, { error: 'Missing channel URL.' });
       return;
     }
-    let rows = await fetchTabRows(channelURL, type);
+    let rows = [];
+    try {
+      rows = await fetchYTDLPTabRows(channelURL, type);
+    } catch {
+      rows = [];
+    }
+    if (rows.length === 0) {
+      rows = await fetchTabRows(channelURL, type);
+    }
     if (type === 'videos' && rows.length === 0) {
       rows = await fetchRSSRows(channelURL);
     }
