@@ -305,5 +305,8 @@ function youtubeAPIMiddleware() {
 }
 
 export default defineConfig({
+  server: {
+    allowedHosts: ['youtubedl.cloudverra.com']
+  },
   plugins: [react(), youtubeAPIMiddleware()]
 });

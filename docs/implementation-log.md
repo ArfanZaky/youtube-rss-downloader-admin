@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-05-18
+
+- Scope: Allowed the configured public downloader domain in Vite.
+- Files or subsystems touched: `vite.config.js`, `CHANGELOG.md`, and this implementation log.
+- Behavior/runtime effect: The Vite dev server now accepts requests whose Host header is `youtubedl.cloudverra.com`, resolving the blocked-host error for the public domain.
+- Validation status: `timeout 120s npm run build` completed successfully; Vite dev server restarted on port `4177`; `curl` with `Host: youtubedl.cloudverra.com` returned `200 OK`; direct `http://youtubedl.cloudverra.com:4177/` check returned `200 OK`.
+- Open follow-up items: Move this from Vite dev serving to a production reverse proxy/runtime when packaging the app for long-term deployment.
+
 ## 2026-05-17
 
 - Scope: Fixed downloader worker command selection and failure reporting.
